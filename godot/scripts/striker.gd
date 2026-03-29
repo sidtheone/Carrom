@@ -85,9 +85,15 @@ func _handle_aim(event: InputEvent) -> void:
 
 
 func _handle_power(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		if event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
-			GameManager.release_power()
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed:
+			# Hold to charge
+			GameManager.is_charging = true
+			AudioManager.play_power_bar()
+		else:
+			# Release to fire (only if charging started)
+			if GameManager.is_charging:
+				GameManager.release_power()
 
 
 func _update_aim_visual() -> void:
@@ -95,10 +101,10 @@ func _update_aim_visual() -> void:
 		return
 	var angle_rad := deg_to_rad(GameManager.aim_angle)
 	var flip := 1.0 if GameManager.current_player == 1 else -1.0
-	# Offset cone in aim direction (matches _shoot_striker direction convention)
+	# Offset cone in shoot direction: P1 toward +Z, P2 toward -Z
 	_aim_indicator.position = Vector3(
 		sin(angle_rad) * flip * 0.35,
 		0.03,
-		-cos(angle_rad) * flip * 0.35
+		cos(angle_rad) * flip * 0.35
 	)
 	_aim_indicator.rotation = Vector3(deg_to_rad(90), -angle_rad * flip, 0)

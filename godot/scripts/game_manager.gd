@@ -118,9 +118,8 @@ func confirm_aim() -> void:
 	if current_state != State.AIM:
 		return
 	power = 0.0
-	is_charging = true
+	is_charging = false
 	_set_state(State.POWER)
-	AudioManager.play_power_bar()
 
 
 # --- Power ---
@@ -138,9 +137,9 @@ func _shoot_striker() -> void:
 	if striker == null:
 		return
 	striker.freeze = false
-	# Player 1 at +Z shoots toward -Z (center), Player 2 at -Z shoots toward +Z
+	# Player 1 at Z=-2.9 shoots toward +Z (center), Player 2 at Z=+2.9 shoots toward -Z
 	var angle_rad := deg_to_rad(aim_angle)
-	var direction := Vector3(sin(angle_rad), 0.0, -cos(angle_rad))
+	var direction := Vector3(sin(angle_rad), 0.0, cos(angle_rad))
 	if current_player == 2:
 		direction.z = -direction.z
 	var impulse := direction * power * 2.0  # scale for feel
