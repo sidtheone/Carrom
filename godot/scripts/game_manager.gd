@@ -50,13 +50,19 @@ var own_piece_pocketed: bool = false
 
 var game_active: bool = true
 
+# --- Debug ---
+var _sim_frame_count: int = 0
+var _sim_log_interval: int = 10  # log every N frames during simulation
+
 
 func _ready() -> void:
 	set_process(true)
+	print("[GM] _ready() called")
 
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("reset_board"):
+		print("[GM] R pressed — reloading scene")
 		get_tree().reload_current_scene()
 
 
@@ -69,10 +75,42 @@ func _process(delta: float) -> void:
 			if is_charging:
 				power = minf(power + POWER_CHARGE_SPEED * delta, MAX_POWER)
 		State.SIMULATION:
+			_sim_frame_count += 1
+			if _sim_frame_count <= 5 or _sim_frame_count % _sim_log_interval == 0:
+				_log_simulation_frame(delta)
 			_check_simulation_complete()
 
 
+func _physics_process(_delta: float) -> void:
+	# Log striker state during first few physics frames after shooting
+	if current_state == State.SIMULATION and striker and _sim_frame_count <= 5:
+		print("[PHYS] frame=%d striker.velocity=%s (mag=%.5f) pos=%s freeze=%s" % [
+			_sim_frame_count, striker.linear_velocity,
+			striker.linear_velocity.length(), striker.global_position, striker.freeze
+		])
+
+
+func _log_simulation_frame(delta: float) -> void:
+	if not striker:
+		return
+	var max_piece_vel := 0.0
+	var moving_count := 0
+	for piece in pieces:
+		if piece.visible:
+			var v := piece.linear_velocity.length()
+			if v > max_piece_vel:
+				max_piece_vel = v
+			if v > STOP_THRESHOLD:
+				moving_count += 1
+	var sv := striker.linear_velocity.length()
+	print("[SIM] frame=%d dt=%.4f | striker: vel=%.5f pos=%s freeze=%s visible=%s | pieces: %d moving, max_vel=%.5f | threshold=%.3f" % [
+		_sim_frame_count, delta, sv, striker.global_position, striker.freeze, striker.visible,
+		moving_count, max_piece_vel, STOP_THRESHOLD
+	])
+
+
 func start_game() -> void:
+	print("[GM] start_game() | player=%d" % 1)
 	current_player = 1
 	scores = [0, 0]
 	queen_pocketed_by = -1
@@ -82,6 +120,9 @@ func start_game() -> void:
 
 
 func _set_state(new_state: State) -> void:
+	var old_name := State.keys()[current_state]
+	var new_name := State.keys()[new_state]
+	print("[STATE] %s → %s | player=%d" % [old_name, new_name, current_player])
 	current_state = new_state
 	state_changed.emit(new_state)
 
@@ -103,6 +144,7 @@ func place_striker_at(x_pos: float) -> void:
 func confirm_placement() -> void:
 	if current_state != State.PLACE_STRIKER:
 		return
+	print("[INPUT] confirm_placement() | striker.pos=%s" % striker.global_position)
 	_set_state(State.AIM)
 
 
@@ -117,6 +159,7 @@ func set_aim_angle(angle_deg: float) -> void:
 func confirm_aim() -> void:
 	if current_state != State.AIM:
 		return
+	print("[INPUT] confirm_aim() | aim_angle=%.2f" % aim_angle)
 	power = 0.0
 	is_charging = false
 	_set_state(State.POWER)
@@ -126,7 +169,8 @@ func confirm_aim() -> void:
 
 
 func release_power() -> void:
-	print("[RELEASE] release_power() called | state=%s power=%.3f" % [State.keys()[current_state], power])
+	print("[RELEASE] release_power() called | state=%s power=%.3f is_charging=%s" % [
+		State.keys()[current_state], power, is_charging])
 	if current_state != State.POWER:
 		print("[RELEASE] REJECTED — state is %s, not POWER" % State.keys()[current_state])
 		return
@@ -139,44 +183,77 @@ func _shoot_striker() -> void:
 	if striker == null:
 		print("[SHOOT] ABORTED — striker is null")
 		return
-	print("[SHOOT] --- _shoot_striker() ---")
-	print("[SHOOT] striker.freeze=%s striker.visible=%s" % [striker.freeze, striker.visible])
-	print("[SHOOT] striker.position=%s" % striker.global_position)
-	print("[SHOOT] striker.mass=%s linear_damp=%s" % [striker.mass, striker.linear_damp])
-	print("[SHOOT] aim_angle=%.2f power=%.3f current_player=%d" % [aim_angle, power, current_player])
 
+	print("[SHOOT] ========== FIRE ==========")
+	print("[SHOOT] PRE-FIRE state:")
+	print("[SHOOT]   striker.freeze       = %s" % striker.freeze)
+	print("[SHOOT]   striker.visible      = %s" % striker.visible)
+	print("[SHOOT]   striker.position     = %s" % striker.global_position)
+	print("[SHOOT]   striker.velocity     = %s" % striker.linear_velocity)
+	print("[SHOOT]   striker.mass         = %s" % striker.mass)
+	print("[SHOOT]   striker.linear_damp  = %s" % striker.linear_damp)
+	print("[SHOOT]   striker.gravity_scale= %s" % striker.gravity_scale)
+	print("[SHOOT]   striker.can_sleep    = %s" % striker.can_sleep)
+	print("[SHOOT]   striker.freeze_mode  = %s" % striker.freeze_mode)
+	print("[SHOOT]   aim_angle            = %.2f" % aim_angle)
+	print("[SHOOT]   power                = %.3f" % power)
+	print("[SHOOT]   current_player       = %d" % current_player)
+
+	# Unfreeze
 	striker.freeze = false
-	# P1 at Z=+2.9 shoots toward -Z (center), P2 at Z=-2.9 shoots toward +Z
+	print("[SHOOT] Set freeze=false → striker.freeze is now %s" % striker.freeze)
+
+	# Compute direction
 	var angle_rad := deg_to_rad(aim_angle)
 	var direction := Vector3(sin(angle_rad), 0.0, -cos(angle_rad))
 	if current_player == 2:
 		direction.z = -direction.z
-	# Set velocity directly instead of apply_central_impulse —
-	# impulse is discarded if freeze was just set to false this frame
-	# because the physics server hasn't processed the unfreeze yet.
-	# velocity = impulse / mass, where impulse = direction * power * 2.0
-	var speed := power * 2.0 / striker.mass
-	striker.linear_velocity = direction * speed
 
-	print("[SHOOT] direction=%s" % direction)
-	print("[SHOOT] speed=%.3f (power=%.3f * 2 / mass=%.1f)" % [speed, power, striker.mass])
-	print("[SHOOT] velocity SET=%s (magnitude=%.5f)" % [striker.linear_velocity, striker.linear_velocity.length()])
+	# Compute velocity
+	var speed := power * 2.0 / striker.mass
+	var target_velocity := direction * speed
+
+	print("[SHOOT] direction  = %s" % direction)
+	print("[SHOOT] speed      = %.5f (power=%.3f * 2.0 / mass=%.1f)" % [speed, power, striker.mass])
+	print("[SHOOT] target_vel = %s (magnitude=%.5f)" % [target_velocity, target_velocity.length()])
+
+	# Apply velocity
+	striker.linear_velocity = target_velocity
+	print("[SHOOT] AFTER linear_velocity assignment:")
+	print("[SHOOT]   striker.linear_velocity = %s (magnitude=%.5f)" % [
+		striker.linear_velocity, striker.linear_velocity.length()])
+	print("[SHOOT]   striker.freeze          = %s" % striker.freeze)
+
+	# Also try apply_central_impulse as backup test
+	# striker.apply_central_impulse(direction * power * 2.0)
+	# print("[SHOOT] Also applied impulse=%s" % (direction * power * 2.0))
 
 	pocketed_this_turn.clear()
 	striker_pocketed = false
 	own_piece_pocketed = false
+
+	_sim_frame_count = 0  # reset simulation frame counter
 	_set_state(State.SIMULATION)
 
-	# Deferred check to see velocity after physics processes the impulse
-	call_deferred("_log_post_impulse")
+	# Check velocity in deferred call (after current frame processing)
+	call_deferred("_log_post_shoot_deferred")
+
+	# Check velocity after 2 physics frames
+	get_tree().create_timer(0.05).timeout.connect(_log_post_shoot_timer)
 
 
-func _log_post_impulse() -> void:
+func _log_post_shoot_deferred() -> void:
 	if striker:
-		print("[SHOOT] velocity AFTER deferred=%s (magnitude=%.5f)" % [striker.linear_velocity, striker.linear_velocity.length()])
-		print("[SHOOT] freeze=%s mode=%s" % [striker.freeze, striker.freeze_mode])
-		print("[SHOOT] collision_layer=%d collision_mask=%d" % [striker.collision_layer, striker.collision_mask])
-		print("[SHOOT] axis_lock_linear: x=%s y=%s z=%s" % [striker.axis_lock_linear_x, striker.axis_lock_linear_y, striker.axis_lock_linear_z])
+		print("[SHOOT-DEFERRED] velocity=%s (mag=%.5f) freeze=%s pos=%s" % [
+			striker.linear_velocity, striker.linear_velocity.length(),
+			striker.freeze, striker.global_position])
+
+
+func _log_post_shoot_timer() -> void:
+	if striker:
+		print("[SHOOT-TIMER-50ms] velocity=%s (mag=%.5f) freeze=%s pos=%s" % [
+			striker.linear_velocity, striker.linear_velocity.length(),
+			striker.freeze, striker.global_position])
 
 
 # --- Simulation / Stop Detection ---
@@ -191,13 +268,21 @@ func _check_simulation_complete() -> void:
 	if striker.linear_velocity.length() > STOP_THRESHOLD:
 		return
 	# All stopped
+	print("[SIM] === ALL STOPPED at frame %d ===" % _sim_frame_count)
+	print("[SIM] striker.velocity=%s striker.visible=%s striker_pocketed=%s" % [
+		striker.linear_velocity, striker.visible, striker_pocketed])
 	_resolve_turn()
 
 
 func _resolve_turn() -> void:
 	_return_count = 0
+	print("[RESOLVE] _resolve_turn() | striker_pocketed=%s own_piece=%s queen_by=%d queen_covered=%s" % [
+		striker_pocketed, own_piece_pocketed, queen_pocketed_by, queen_covered])
+	print("[RESOLVE] pocketed_this_turn count=%d" % pocketed_this_turn.size())
+
 	# Check for fouls
 	if striker_pocketed:
+		print("[RESOLVE] → FOUL: striker pocketed")
 		foul_committed.emit(current_player, "Striker pocketed!")
 		_handle_foul()
 		return
@@ -206,8 +291,10 @@ func _resolve_turn() -> void:
 	if queen_pocketed_by == current_player and not queen_covered:
 		if own_piece_pocketed:
 			queen_covered = true
+			print("[RESOLVE] → Queen covered!")
 		else:
 			# Queen not covered — return it to center, lose turn
+			print("[RESOLVE] → FOUL: queen not covered")
 			foul_committed.emit(current_player, "Queen not covered!")
 			_return_queen_to_center()
 			queen_pocketed_by = -1
@@ -219,12 +306,15 @@ func _resolve_turn() -> void:
 
 	# Check win condition
 	if _check_win():
+		print("[RESOLVE] → GAME OVER")
 		return
 
 	# If player pocketed own piece, they get another turn
 	if own_piece_pocketed:
+		print("[RESOLVE] → Extra turn for player %d" % current_player)
 		_set_state(State.PLACE_STRIKER)
 	else:
+		print("[RESOLVE] → Switch turn")
 		_switch_turn()
 
 
@@ -277,6 +367,7 @@ func _return_opponent_pieces() -> void:
 
 
 func _switch_turn() -> void:
+	print("[TURN] Switch: player %d → %d" % [current_player, 2 if current_player == 1 else 1])
 	current_player = 2 if current_player == 1 else 1
 	turn_changed.emit(current_player)
 	_set_state(State.PLACE_STRIKER)
@@ -327,6 +418,7 @@ func on_piece_pocketed(body: RigidBody3D) -> void:
 	if not game_active:
 		return
 
+	print("[POCKET] body=%s is_striker=%s" % [body.name, body == striker])
 	AudioManager.play_sound(AudioManager.SFX.POT, 0.7)
 
 	if body == striker:
@@ -336,6 +428,7 @@ func on_piece_pocketed(body: RigidBody3D) -> void:
 		body.freeze = true
 		body.visible = false
 		body.global_position = Vector3(0, -10, 0)
+		print("[POCKET] Striker pocketed — flagged for foul")
 		return
 
 	body.visible = false
@@ -358,13 +451,17 @@ func on_piece_pocketed(body: RigidBody3D) -> void:
 	scores[current_player - 1] += points
 	score_updated.emit(current_player, scores[current_player - 1])
 	piece_pocketed.emit(body, current_player)
+	print("[POCKET] %s pocketed (color=%d) +%d pts → P%d score=%d" % [
+		body.name, piece_color, points, current_player, scores[current_player - 1]])
 
 	# Track if own piece pocketed
 	if (current_player == 1 and piece_color == PieceColor.BLACK) or \
 	   (current_player == 2 and piece_color == PieceColor.WHITE):
 		own_piece_pocketed = true
+		print("[POCKET] → own piece! extra turn earned")
 
 	# Queen tracking
 	if piece_color == PieceColor.RED:
 		queen_pocketed_by = current_player
 		queen_covered = false
+		print("[POCKET] → QUEEN pocketed by P%d, needs cover" % current_player)
