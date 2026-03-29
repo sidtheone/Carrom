@@ -204,19 +204,23 @@ func _shoot_striker() -> void:
 	print("[SHOOT] Set freeze=false → striker.freeze is now %s" % striker.freeze)
 
 	# Compute direction
+	# Negate sin so mouse-right → +X (screen-right for P1)
 	var angle_rad := deg_to_rad(aim_angle)
-	var direction := Vector3(sin(angle_rad), 0.0, -cos(angle_rad))
+	var direction := Vector3(-sin(angle_rad), 0.0, -cos(angle_rad))
 	if current_player == 2:
+		direction.x = -direction.x  # flip both axes for P2 (180° camera)
 		direction.z = -direction.z
 
-	# With linear_damp=3.0, max travel ≈ speed/damp.
-	# Full power should travel ~3x board (3 * 7.4 = 22.2), so speed = 22.2 * 3.0 = 66.6
-	# multiplier = 66.6 / MAX_POWER = 13.3
-	var speed := power * 13.3
+	# With linear_damp=3.0, max travel without walls ≈ speed/damp.
+	# At max power with wall bounces (0.6 restitution):
+	#   travel ≈ speed/damp * (1 + 0.6 + 0.36) ≈ speed/damp * 2
+	# For 3x board (22.2) with bounces: speed = 22.2 / 2 * 3.0 = 33.3
+	# multiplier = 33.3 / MAX_POWER = 6.66
+	var speed := power * 6.66
 	var target_velocity := direction * speed
 
 	print("[SHOOT] direction  = %s" % direction)
-	print("[SHOOT] speed      = %.5f (power=%.3f * 13.3)" % [speed, power])
+	print("[SHOOT] speed      = %.5f (power=%.3f * 6.66)" % [speed, power])
 	print("[SHOOT] target_vel = %s (magnitude=%.5f)" % [target_velocity, target_velocity.length()])
 
 	# Apply velocity

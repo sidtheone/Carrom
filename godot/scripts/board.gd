@@ -298,6 +298,7 @@ func _spawn_striker() -> void:
 
 	striker.collision_layer = 4  # striker layer (3)
 	striker.collision_mask = 3   # board (1) + pieces (2)
+	striker.continuous_cd = true  # prevent tunneling through walls at high speed
 
 	add_child(striker)
 	GameManager.striker = striker
@@ -310,6 +311,7 @@ func _create_piece(radius: float, height: float, mass_val: float, color: Color, 
 	body.linear_damp = 3.0
 	body.angular_damp = 8.0
 	body.can_sleep = false  # need velocity checks
+	body.continuous_cd = true  # prevent tunneling through walls at high speed
 
 	# Lock Y position and rotations (keep pieces flat on board)
 	body.axis_lock_linear_y = true
