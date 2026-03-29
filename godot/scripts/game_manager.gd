@@ -151,15 +151,16 @@ func _shoot_striker() -> void:
 	var direction := Vector3(sin(angle_rad), 0.0, -cos(angle_rad))
 	if current_player == 2:
 		direction.z = -direction.z
-	var impulse := direction * power * 2.0  # scale for feel
+	# Set velocity directly instead of apply_central_impulse —
+	# impulse is discarded if freeze was just set to false this frame
+	# because the physics server hasn't processed the unfreeze yet.
+	# velocity = impulse / mass, where impulse = direction * power * 2.0
+	var speed := power * 2.0 / striker.mass
+	striker.linear_velocity = direction * speed
 
 	print("[SHOOT] direction=%s" % direction)
-	print("[SHOOT] impulse=%s (magnitude=%.3f)" % [impulse, impulse.length()])
-
-	striker.apply_central_impulse(impulse)
-
-	# Check velocity on next frame
-	print("[SHOOT] velocity BEFORE physics step=%s" % striker.linear_velocity)
+	print("[SHOOT] speed=%.3f (power=%.3f * 2 / mass=%.1f)" % [speed, power, striker.mass])
+	print("[SHOOT] velocity SET=%s (magnitude=%.5f)" % [striker.linear_velocity, striker.linear_velocity.length()])
 
 	pocketed_this_turn.clear()
 	striker_pocketed = false
