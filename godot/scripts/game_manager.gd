@@ -167,6 +167,7 @@ func _check_simulation_complete() -> void:
 
 
 func _resolve_turn() -> void:
+	_return_count = 0
 	# Check for fouls
 	if striker_pocketed:
 		foul_committed.emit(current_player, "Striker pocketed!")
@@ -200,7 +201,10 @@ func _resolve_turn() -> void:
 
 
 func _handle_foul() -> void:
-	# Reset striker
+	# Reset striker to baseline
+	var next_player := 2 if current_player == 1 else 1
+	var placement_z: float = PLACEMENT_Y if next_player == 1 else -PLACEMENT_Y
+	striker.global_position = Vector3(0, 0.02, placement_z)
 	striker.linear_velocity = Vector3.ZERO
 	striker.angular_velocity = Vector3.ZERO
 	striker.freeze = true
@@ -218,13 +222,19 @@ func _handle_foul() -> void:
 	_switch_turn()
 
 
+var _return_count: int = 0
+
 func _return_piece_to_center(piece: RigidBody3D) -> void:
-	var offset := Vector3(randf_range(-0.1, 0.1), 0.0, randf_range(-0.1, 0.1))
+	# Spread returned pieces in a ring to avoid overlap and drift
+	var angle := _return_count * PI * 2.0 / 3.0 + randf_range(-0.3, 0.3)
+	var dist := 0.2 + _return_count * 0.15
+	var offset := Vector3(cos(angle) * dist, 0.0, sin(angle) * dist)
 	piece.global_position = Vector3(0, 0.02, 0) + offset
 	piece.linear_velocity = Vector3.ZERO
 	piece.angular_velocity = Vector3.ZERO
 	piece.visible = true
 	piece.freeze = false
+	_return_count += 1
 
 
 func _return_opponent_pieces() -> void:
@@ -295,7 +305,9 @@ func on_piece_pocketed(body: RigidBody3D) -> void:
 		striker_pocketed = true
 		body.linear_velocity = Vector3.ZERO
 		body.angular_velocity = Vector3.ZERO
-		# Don't hide striker, just mark it
+		body.freeze = true
+		body.visible = false
+		body.global_position = Vector3(0, -10, 0)
 		return
 
 	body.visible = false

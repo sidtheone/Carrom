@@ -18,9 +18,9 @@ func _create_aim_indicator() -> void:
 	cone.bottom_radius = 0.02
 	cone.height = 0.6
 	_aim_indicator.mesh = cone
-	# Rotate so it points along Z
+	# Rotate so tip points toward +Z (shoot direction for P1)
 	_aim_indicator.rotation.x = deg_to_rad(90)
-	_aim_indicator.position = Vector3(0, 0.03, -0.35)
+	_aim_indicator.position = Vector3(0, 0.03, 0.35)
 
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(1, 0.3, 0.3, 0.7)
@@ -61,6 +61,9 @@ func _handle_placement(event: InputEvent) -> void:
 		var screen_w: float = viewport.get_visible_rect().size.x
 		# Map screen X [0, screen_w] → world X [-3.7, 3.7] then clamp to placement zone
 		var world_x: float = (mouse_x - screen_w / 2.0) / screen_w * 7.4
+		# P2's camera is rotated 180° — flip so mouse right = screen right
+		if GameManager.current_player == 2:
+			world_x = -world_x
 		GameManager.place_striker_at(world_x)
 
 	elif event is InputEventMouseButton:
@@ -85,7 +88,9 @@ func _handle_aim(event: InputEvent) -> void:
 
 
 func _handle_power(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+	if not event is InputEventMouseButton:
+		return
+	if event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
 			# Hold to charge
 			GameManager.is_charging = true
@@ -94,6 +99,12 @@ func _handle_power(event: InputEvent) -> void:
 			# Release to fire (only if charging started)
 			if GameManager.is_charging:
 				GameManager.release_power()
+	elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
+		# Cancel back to AIM
+		GameManager.is_charging = false
+		GameManager.power = 0.0
+		AudioManager.stop_power_bar()
+		GameManager._set_state(GameManager.State.AIM)
 
 
 func _update_aim_visual() -> void:

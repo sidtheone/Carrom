@@ -20,7 +20,7 @@ extends CanvasLayer
 const STATE_NAMES := {
 	GameManager.State.PLACE_STRIKER: "Place Striker (click)",
 	GameManager.State.AIM: "Aim (move mouse, click)",
-	GameManager.State.POWER: "Power (hold... release!)",
+	GameManager.State.POWER: "Power (hold... release! right-click=cancel)",
 	GameManager.State.SIMULATION: "Simulating...",
 }
 
