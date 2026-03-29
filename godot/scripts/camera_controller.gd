@@ -5,38 +5,38 @@ extends Camera3D
 
 const PRESETS := {
 	GameManager.State.PLACE_STRIKER: {
-		"position": Vector3(0, 800, 50),
+		"position": Vector3(0, 100, 5),
 		"rotation": Vector3(-85, 0, 0),
 	},
 	GameManager.State.AIM: {
-		"position": Vector3(0, 500, 450),
+		"position": Vector3(0, 60, 55),
 		"rotation": Vector3(-50, 0, 0),
 	},
 	GameManager.State.POWER: {
-		"position": Vector3(0, 500, 450),
+		"position": Vector3(0, 60, 55),
 		"rotation": Vector3(-50, 0, 0),
 	},
 	GameManager.State.SIMULATION: {
-		"position": Vector3(0, 700, 200),
+		"position": Vector3(0, 85, 25),
 		"rotation": Vector3(-70, 0, 0),
 	},
 }
 
 const PRESETS_P2 := {
 	GameManager.State.PLACE_STRIKER: {
-		"position": Vector3(0, 800, -50),
+		"position": Vector3(0, 100, -5),
 		"rotation": Vector3(-85, 180, 0),
 	},
 	GameManager.State.AIM: {
-		"position": Vector3(0, 500, -450),
+		"position": Vector3(0, 60, -55),
 		"rotation": Vector3(-50, 180, 0),
 	},
 	GameManager.State.POWER: {
-		"position": Vector3(0, 500, -450),
+		"position": Vector3(0, 60, -55),
 		"rotation": Vector3(-50, 180, 0),
 	},
 	GameManager.State.SIMULATION: {
-		"position": Vector3(0, 700, -200),
+		"position": Vector3(0, 85, -25),
 		"rotation": Vector3(-70, 180, 0),
 	},
 }
