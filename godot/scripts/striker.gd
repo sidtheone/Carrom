@@ -95,10 +95,14 @@ func _handle_power(event: InputEvent) -> void:
 			# Hold to charge
 			GameManager.is_charging = true
 			AudioManager.play_power_bar()
+			print("[POWER] Charging started")
 		else:
 			# Release to fire (only if charging started)
+			print("[POWER] Mouse released | is_charging=%s power=%.3f" % [GameManager.is_charging, GameManager.power])
 			if GameManager.is_charging:
 				GameManager.release_power()
+			else:
+				print("[POWER] SKIPPED — is_charging was false (stale release from AIM confirm)")
 	elif event.button_index == MOUSE_BUTTON_RIGHT and event.pressed:
 		# Cancel back to AIM
 		GameManager.is_charging = false

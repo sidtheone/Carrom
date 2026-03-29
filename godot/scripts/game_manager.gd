@@ -126,7 +126,9 @@ func confirm_aim() -> void:
 
 
 func release_power() -> void:
+	print("[RELEASE] release_power() called | state=%s power=%.3f" % [State.keys()[current_state], power])
 	if current_state != State.POWER:
+		print("[RELEASE] REJECTED — state is %s, not POWER" % State.keys()[current_state])
 		return
 	is_charging = false
 	AudioManager.stop_power_bar()
@@ -135,7 +137,14 @@ func release_power() -> void:
 
 func _shoot_striker() -> void:
 	if striker == null:
+		print("[SHOOT] ABORTED — striker is null")
 		return
+	print("[SHOOT] --- _shoot_striker() ---")
+	print("[SHOOT] striker.freeze=%s striker.visible=%s" % [striker.freeze, striker.visible])
+	print("[SHOOT] striker.position=%s" % striker.global_position)
+	print("[SHOOT] striker.mass=%s linear_damp=%s" % [striker.mass, striker.linear_damp])
+	print("[SHOOT] aim_angle=%.2f power=%.3f current_player=%d" % [aim_angle, power, current_player])
+
 	striker.freeze = false
 	# P1 at Z=+2.9 shoots toward -Z (center), P2 at Z=-2.9 shoots toward +Z
 	var angle_rad := deg_to_rad(aim_angle)
@@ -143,12 +152,30 @@ func _shoot_striker() -> void:
 	if current_player == 2:
 		direction.z = -direction.z
 	var impulse := direction * power * 2.0  # scale for feel
+
+	print("[SHOOT] direction=%s" % direction)
+	print("[SHOOT] impulse=%s (magnitude=%.3f)" % [impulse, impulse.length()])
+
 	striker.apply_central_impulse(impulse)
+
+	# Check velocity on next frame
+	print("[SHOOT] velocity BEFORE physics step=%s" % striker.linear_velocity)
 
 	pocketed_this_turn.clear()
 	striker_pocketed = false
 	own_piece_pocketed = false
 	_set_state(State.SIMULATION)
+
+	# Deferred check to see velocity after physics processes the impulse
+	call_deferred("_log_post_impulse")
+
+
+func _log_post_impulse() -> void:
+	if striker:
+		print("[SHOOT] velocity AFTER deferred=%s (magnitude=%.5f)" % [striker.linear_velocity, striker.linear_velocity.length()])
+		print("[SHOOT] freeze=%s mode=%s" % [striker.freeze, striker.freeze_mode])
+		print("[SHOOT] collision_layer=%d collision_mask=%d" % [striker.collision_layer, striker.collision_mask])
+		print("[SHOOT] axis_lock_linear: x=%s y=%s z=%s" % [striker.axis_lock_linear_x, striker.axis_lock_linear_y, striker.axis_lock_linear_z])
 
 
 # --- Simulation / Stop Detection ---
