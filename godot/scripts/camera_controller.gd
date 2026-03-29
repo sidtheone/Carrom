@@ -1,49 +1,42 @@
 extends Camera3D
 
 ## Camera system with presets for each game state.
-## Smooth transitions via Tween.
+## Scale: 1 unit = 1 cm. Positions in cm.
 
-# Camera presets: [position, rotation_degrees]
-# Matches original C++ camera states
 const PRESETS := {
-	# PLACE_STRIKER: top-down orthographic-like view
 	GameManager.State.PLACE_STRIKER: {
-		"position": Vector3(0, 8.0, 0.5),
+		"position": Vector3(0, 800, 50),
 		"rotation": Vector3(-85, 0, 0),
 	},
-	# AIM: slightly angled behind striker (player 1 side)
 	GameManager.State.AIM: {
-		"position": Vector3(0, 5.0, 4.5),
+		"position": Vector3(0, 500, 450),
 		"rotation": Vector3(-50, 0, 0),
 	},
-	# POWER: same as aim
 	GameManager.State.POWER: {
-		"position": Vector3(0, 5.0, 4.5),
+		"position": Vector3(0, 500, 450),
 		"rotation": Vector3(-50, 0, 0),
 	},
-	# SIMULATION: wide overhead
 	GameManager.State.SIMULATION: {
-		"position": Vector3(0, 7.0, 2.0),
+		"position": Vector3(0, 700, 200),
 		"rotation": Vector3(-70, 0, 0),
 	},
 }
 
-# Flipped versions for player 2
 const PRESETS_P2 := {
 	GameManager.State.PLACE_STRIKER: {
-		"position": Vector3(0, 8.0, -0.5),
+		"position": Vector3(0, 800, -50),
 		"rotation": Vector3(-85, 180, 0),
 	},
 	GameManager.State.AIM: {
-		"position": Vector3(0, 5.0, -4.5),
+		"position": Vector3(0, 500, -450),
 		"rotation": Vector3(-50, 180, 0),
 	},
 	GameManager.State.POWER: {
-		"position": Vector3(0, 5.0, -4.5),
+		"position": Vector3(0, 500, -450),
 		"rotation": Vector3(-50, 180, 0),
 	},
 	GameManager.State.SIMULATION: {
-		"position": Vector3(0, 7.0, -2.0),
+		"position": Vector3(0, 700, -200),
 		"rotation": Vector3(-70, 180, 0),
 	},
 }
@@ -55,7 +48,6 @@ const TRANSITION_DURATION := 0.5
 func _ready() -> void:
 	GameManager.state_changed.connect(_on_state_changed)
 	GameManager.turn_changed.connect(_on_turn_changed)
-	# Set initial position
 	_apply_preset_instant(GameManager.State.PLACE_STRIKER, 1)
 
 
@@ -64,7 +56,6 @@ func _on_state_changed(new_state: int) -> void:
 
 
 func _on_turn_changed(_player: int) -> void:
-	# Camera will update on next state_changed
 	pass
 
 

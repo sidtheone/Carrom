@@ -69,8 +69,8 @@ func play_sound(sfx: SFX, volume: float = -1.0) -> void:
 func play_collision_sound(sfx: SFX, velocity: float) -> void:
 	## Dynamic volume: louder collisions = louder sound.
 	var gain: float = float(DEFAULT_GAINS.get(sfx, 0.5))
-	if velocity > 0.01:
-		gain = clampf(gain * velocity * 0.5, 0.1, 1.0)
+	if velocity > 1.0:
+		gain = clampf(gain * velocity * 0.01, 0.1, 1.0)
 	play_sound(sfx, gain)
 
 

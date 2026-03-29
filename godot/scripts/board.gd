@@ -2,20 +2,27 @@ extends Node3D
 
 ## Builds the carrom board, pieces, pockets, and walls procedurally.
 ## Attached to the root Board node in main.tscn.
+## Scale: 1 unit = 1 cm. Board is 74x74 cm.
 
-const S := 0.01  # scale factor (original units → Godot world)
-const BOARD_SIZE := 740.0
-const BOARD_HEIGHT := 4.0
-const BOUNDARY_HEIGHT := 70.0
-const BOUNDARY_BREADTH := 80.0
-const POCKET_RADIUS := 28.0
-const MEN_RADIUS := 18.0
-const MEN_MASS := 12.0
-const STRIKER_RADIUS := 22.0
-const STRIKER_MASS := 18.0
-const MEN_HEIGHT := 2.0
-const PI_VAL := 3.141
-const DEG := 180.0
+# --- Dimensions (cm) ---
+const BOARD_SIZE := 74.0
+const BOARD_HEIGHT := 0.4
+const BOUNDARY_HEIGHT := 2.0
+const WALL_THICKNESS := 2.4
+const POCKET_RADIUS := 2.8
+const MEN_RADIUS := 1.8
+const MEN_HEIGHT := 0.2
+const STRIKER_RADIUS := 2.2
+
+# --- Physics (grams, real carrom values) ---
+const MEN_MASS := 5.0       # ~5g carrom piece
+const STRIKER_MASS := 15.0   # ~15g striker (3:1 ratio)
+const PIECE_LINEAR_DAMP := 0.5   # gentle surface friction (powdered board)
+const PIECE_ANGULAR_DAMP := 2.0  # moderate spin resistance
+const PIECE_BOUNCE := 0.8        # hard plastic = elastic collisions
+const PIECE_FRICTION := 0.05     # powdered board = near-frictionless
+const WALL_BOUNCE := 0.7         # rubber cushion on wood frame
+const WALL_FRICTION := 0.1       # smooth lacquered wood
 
 
 func _ready() -> void:
@@ -37,11 +44,11 @@ func _build_board_surface() -> void:
 
 	var mesh_inst := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	box.size = Vector3(BOARD_SIZE * S, BOARD_HEIGHT * S, BOARD_SIZE * S)
+	box.size = Vector3(BOARD_SIZE, BOARD_HEIGHT, BOARD_SIZE)
 	mesh_inst.mesh = box
 
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.85, 0.75, 0.45)  # yellow/wood
+	mat.albedo_color = Color(0.85, 0.75, 0.45)
 	mat.roughness = 0.8
 	mesh_inst.material_override = mat
 
@@ -52,8 +59,8 @@ func _build_board_surface() -> void:
 
 	body.add_child(mesh_inst)
 	body.add_child(col)
-	body.position.y = -(BOARD_HEIGHT * S) / 2.0  # top surface at y=0
-	body.collision_layer = 1  # board layer
+	body.position.y = -BOARD_HEIGHT / 2.0  # top surface at y=0
+	body.collision_layer = 1
 	body.collision_mask = 0
 	add_child(body)
 
@@ -61,17 +68,14 @@ func _build_board_surface() -> void:
 # --- Boundaries (4 walls) ---
 
 func _build_boundaries() -> void:
-	var half := (BOARD_SIZE / 2.0) * S
-	var bw := BOUNDARY_BREADTH * S
-	var bh := BOUNDARY_HEIGHT * S * 0.3  # visual height scaled down
-	var wall_thickness := bw * 0.3
+	var half := BOARD_SIZE / 2.0
+	var bh := BOUNDARY_HEIGHT
 
-	# Walls: [name, position, size]
 	var walls := [
-		["WallTop",    Vector3(0, bh / 2.0, -half), Vector3(BOARD_SIZE * S + bw * 2, bh, wall_thickness)],
-		["WallBottom", Vector3(0, bh / 2.0,  half), Vector3(BOARD_SIZE * S + bw * 2, bh, wall_thickness)],
-		["WallLeft",   Vector3(-half, bh / 2.0, 0), Vector3(wall_thickness, bh, BOARD_SIZE * S + bw * 2)],
-		["WallRight",  Vector3( half, bh / 2.0, 0), Vector3(wall_thickness, bh, BOARD_SIZE * S + bw * 2)],
+		["WallTop",    Vector3(0, bh / 2.0, -half), Vector3(BOARD_SIZE + WALL_THICKNESS * 2, bh, WALL_THICKNESS)],
+		["WallBottom", Vector3(0, bh / 2.0,  half), Vector3(BOARD_SIZE + WALL_THICKNESS * 2, bh, WALL_THICKNESS)],
+		["WallLeft",   Vector3(-half, bh / 2.0, 0), Vector3(WALL_THICKNESS, bh, BOARD_SIZE + WALL_THICKNESS * 2)],
+		["WallRight",  Vector3( half, bh / 2.0, 0), Vector3(WALL_THICKNESS, bh, BOARD_SIZE + WALL_THICKNESS * 2)],
 	]
 
 	for w: Array in walls:
@@ -84,7 +88,7 @@ func _build_boundaries() -> void:
 		box.size = w[2] as Vector3
 		mesh_inst.mesh = box
 		var mat := StandardMaterial3D.new()
-		mat.albedo_color = Color(0.35, 0.2, 0.1)  # dark brown
+		mat.albedo_color = Color(0.35, 0.2, 0.1)
 		mat.roughness = 0.9
 		mesh_inst.material_override = mat
 
@@ -95,13 +99,12 @@ func _build_boundaries() -> void:
 
 		body.add_child(mesh_inst)
 		body.add_child(col)
-		body.collision_layer = 1  # board layer
+		body.collision_layer = 1
 		body.collision_mask = 0
 
-		# Physics material for bounce
 		var phys_mat := PhysicsMaterial.new()
-		phys_mat.bounce = 0.6
-		phys_mat.friction = 0.3
+		phys_mat.bounce = WALL_BOUNCE
+		phys_mat.friction = WALL_FRICTION
 		body.physics_material_override = phys_mat
 
 		add_child(body)
@@ -110,8 +113,8 @@ func _build_boundaries() -> void:
 # --- Pockets (4 corners) ---
 
 func _build_pockets() -> void:
-	var half := (BOARD_SIZE / 2.0) * S
-	var offset := half * 0.95  # slightly inset from corner
+	var half := BOARD_SIZE / 2.0
+	var offset := half * 0.95
 	var corners := [
 		Vector3(-offset, 0, -offset),
 		Vector3( offset, 0, -offset),
@@ -126,24 +129,24 @@ func _build_pockets() -> void:
 
 		var col := CollisionShape3D.new()
 		var shape := SphereShape3D.new()
-		shape.radius = POCKET_RADIUS * S
+		shape.radius = POCKET_RADIUS
 		col.shape = shape
 		area.add_child(col)
 
 		# Visual: dark circle
 		var mesh_inst := MeshInstance3D.new()
 		var cyl := CylinderMesh.new()
-		cyl.top_radius = POCKET_RADIUS * S
-		cyl.bottom_radius = POCKET_RADIUS * S
-		cyl.height = 0.005
+		cyl.top_radius = POCKET_RADIUS
+		cyl.bottom_radius = POCKET_RADIUS
+		cyl.height = 0.5
 		mesh_inst.mesh = cyl
 		var mat := StandardMaterial3D.new()
 		mat.albedo_color = Color(0.05, 0.05, 0.05)
 		mesh_inst.material_override = mat
 		area.add_child(mesh_inst)
 
-		area.collision_layer = 8  # pocket layer (4)
-		area.collision_mask = 6   # pieces (2) + striker (3)
+		area.collision_layer = 8
+		area.collision_mask = 6   # pieces (2) + striker (4)
 		area.body_entered.connect(_on_pocket_body_entered)
 
 		add_child(area)
@@ -160,11 +163,11 @@ func _build_center_circle() -> void:
 	var mesh_inst := MeshInstance3D.new()
 	mesh_inst.name = "CenterCircle"
 	var torus := TorusMesh.new()
-	torus.inner_radius = 0.35
-	torus.outer_radius = 0.38
+	torus.inner_radius = 3.5
+	torus.outer_radius = 3.8
 	mesh_inst.mesh = torus
-	mesh_inst.position.y = 0.005
-	mesh_inst.rotation.x = PI / 2  # flat on board
+	mesh_inst.position.y = 0.05
+	mesh_inst.rotation.x = PI / 2
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.4, 0.2, 0.1)
 	mesh_inst.material_override = mat
@@ -174,17 +177,16 @@ func _build_center_circle() -> void:
 # --- Board Markings (baselines + diagonals, visual only) ---
 
 func _build_board_markings() -> void:
-	var half := (BOARD_SIZE / 2.0) * S
-	var baseline_z := 290.0 * S  # matches PLACEMENT_Y
-	var line_thick := 0.005
-	var line_y := 0.003
+	var half := BOARD_SIZE / 2.0
+	var baseline_z := 29.0  # matches PLACEMENT_Y
+	var line_thick := 0.5
+	var line_y := 0.03
 	var line_color := Color(0.3, 0.2, 0.05)
 
-	# Two baselines (one per player side)
 	for sign_val in [1.0, -1.0]:
 		var m := MeshInstance3D.new()
 		var box := BoxMesh.new()
-		box.size = Vector3(BOARD_SIZE * S * 0.55, 0.002, line_thick)
+		box.size = Vector3(BOARD_SIZE * 0.55, 0.02, line_thick)
 		m.mesh = box
 		m.position = Vector3(0, line_y, sign_val * baseline_z)
 		var mat := StandardMaterial3D.new()
@@ -192,7 +194,6 @@ func _build_board_markings() -> void:
 		m.material_override = mat
 		add_child(m)
 
-	# Four diagonal corner lines
 	var diag_data := [
 		[Vector3(-half * 0.5, line_y, -half * 0.5), 45.0],
 		[Vector3( half * 0.5, line_y, -half * 0.5), -45.0],
@@ -202,7 +203,7 @@ func _build_board_markings() -> void:
 	for dp: Array in diag_data:
 		var m := MeshInstance3D.new()
 		var box := BoxMesh.new()
-		box.size = Vector3(half * 0.7, 0.002, line_thick)
+		box.size = Vector3(half * 0.7, 0.02, line_thick)
 		m.mesh = box
 		m.position = dp[0] as Vector3
 		m.rotation.y = deg_to_rad(float(dp[1]))
@@ -215,119 +216,111 @@ func _build_board_markings() -> void:
 # --- Piece Spawning ---
 
 func _spawn_pieces() -> void:
-	# Replicate exact positions from original model.cpp
-	# Original: X,Y plane. Godot: X,Z plane (Y is up).
-	var r := MEN_RADIUS  # 18
-	var d := 2.0 * r + 1.0  # 37 — spacing
-	var d2 := 2.0 * r - 4.0  # 32 — inner ring offset
-	var cos30 := cos(30.0 * PI_VAL / DEG)
-	var sin30 := sin(30.0 * PI_VAL / DEG)
+	var r := MEN_RADIUS  # 1.8 cm
+	var d := 2.0 * r + 0.1  # spacing with small gap
+	var d2 := 2.0 * r - 0.4
+	var cos30 := cos(deg_to_rad(30.0))
+	var sin30 := sin(deg_to_rad(30.0))
 
-	# [position_x, position_y(→z), color]
-	# 0=BLACK, 1=WHITE, 2=RED
+	# [position_x, position_z, color] — 0=BLACK, 1=WHITE, 2=RED
 	var layout: Array = [
-		# Queen (center)
-		[0, 0, 2],
-		# Inner ring
-		[0, d, 0],                                    # BLACK top
-		[d * cos30, d * sin30, 1],                     # WHITE
-		[-d * cos30, d * sin30, 1],                    # WHITE (mirror)
-		[0, -d, 1],                                    # WHITE bottom
-		[d * cos30, -d * sin30, 0],                    # BLACK
-		[-d * cos30, -d * sin30, 0],                   # BLACK (mirror)
-		# Outer ring
-		[2 * d2 * sin30, 2 * d2 * cos30, 0],          # BLACK
-		[2 * d * cos30, 2 * d * sin30, 1],             # WHITE
-		[0, 2 * d, 1],                                  # WHITE
-		[2 * d2, 0, 0],                                 # BLACK
-		[-2 * d2 * sin30, 2 * d2 * cos30, 0],          # BLACK (mirror)
-		[-2 * d * cos30, 2 * d * sin30, 1],             # WHITE
-		[-2 * d2, 0, 0],                                 # BLACK
-		[2 * d2 * sin30, -2 * d2 * cos30, 0],          # BLACK
-		[2 * d * cos30, -2 * d * sin30, 1],             # WHITE
-		[-2 * d2 * sin30, -2 * d2 * cos30, 0],          # BLACK
-		[-2 * d * cos30, -2 * d * sin30, 1],             # WHITE
-		[0, -2 * d, 1],                                  # WHITE
+		[0, 0, 2],                                          # Queen (center)
+		[0, d, 0],                                          # BLACK
+		[d * cos30, d * sin30, 1],                          # WHITE
+		[-d * cos30, d * sin30, 1],                         # WHITE
+		[0, -d, 1],                                         # WHITE
+		[d * cos30, -d * sin30, 0],                         # BLACK
+		[-d * cos30, -d * sin30, 0],                        # BLACK
+		[2 * d2 * sin30, 2 * d2 * cos30, 0],               # BLACK
+		[2 * d * cos30, 2 * d * sin30, 1],                  # WHITE
+		[0, 2 * d, 1],                                      # WHITE
+		[2 * d2, 0, 0],                                     # BLACK
+		[-2 * d2 * sin30, 2 * d2 * cos30, 0],              # BLACK
+		[-2 * d * cos30, 2 * d * sin30, 1],                 # WHITE
+		[-2 * d2, 0, 0],                                    # BLACK
+		[2 * d2 * sin30, -2 * d2 * cos30, 0],              # BLACK
+		[2 * d * cos30, -2 * d * sin30, 1],                 # WHITE
+		[-2 * d2 * sin30, -2 * d2 * cos30, 0],             # BLACK
+		[-2 * d * cos30, -2 * d * sin30, 1],                # WHITE
+		[0, -2 * d, 1],                                     # WHITE
 	]
 
 	var colors_map := {
-		0: [Color(0.1, 0.1, 0.1), GameManager.PieceColor.BLACK],    # black
-		1: [Color(0.95, 0.92, 0.85), GameManager.PieceColor.WHITE],  # white
-		2: [Color(0.85, 0.1, 0.1), GameManager.PieceColor.RED],      # red queen
+		0: [Color(0.1, 0.1, 0.1), GameManager.PieceColor.BLACK],
+		1: [Color(0.95, 0.92, 0.85), GameManager.PieceColor.WHITE],
+		2: [Color(0.85, 0.1, 0.1), GameManager.PieceColor.RED],
 	}
 
 	for i in range(layout.size()):
 		var data: Array = layout[i]
-		var pos_x: float = float(data[0]) * S
-		var pos_z: float = float(data[1]) * S
+		var pos_x: float = float(data[0])
+		var pos_z: float = float(data[1])
 		var color_idx: int = int(data[2])
 
 		var color_data: Array = colors_map[color_idx]
 		var piece := _create_piece(
-			MEN_RADIUS * S,
-			MEN_HEIGHT * S,
+			MEN_RADIUS,
+			MEN_HEIGHT,
 			MEN_MASS,
 			color_data[0] as Color,
 			color_data[1] as GameManager.PieceColor
 		)
 		piece.name = "Piece_%d" % i
-		piece.position = Vector3(pos_x, MEN_HEIGHT * S * 0.5, pos_z)
+		piece.position = Vector3(pos_x, MEN_HEIGHT * 0.5, pos_z)
 		add_child(piece)
 		GameManager.pieces.append(piece)
 
 		if color_idx == 2:
 			GameManager.queen = piece
 
-	# Log piece setup
 	print("[BOARD] Spawned %d pieces" % GameManager.pieces.size())
 	for p: RigidBody3D in GameManager.pieces:
-		print("[BOARD]   %s: pos=%s freeze=%s layer=%d mask=%d mass=%.1f" % [
-			p.name, p.position, p.freeze, p.collision_layer, p.collision_mask, p.mass])
+		print("[BOARD]   %s: pos=%s freeze=%s layer=%d mask=%d mass=%.1f damp=%.1f" % [
+			p.name, p.position, p.freeze, p.collision_layer, p.collision_mask,
+			p.mass, p.linear_damp])
 
 
 func _spawn_striker() -> void:
 	var striker := _create_piece(
-		STRIKER_RADIUS * S,
-		MEN_HEIGHT * S,
+		STRIKER_RADIUS,
+		MEN_HEIGHT,
 		STRIKER_MASS,
-		Color(0.05, 0.05, 0.25),  # dark blue
-		GameManager.PieceColor.BLACK  # doesn't matter for striker
+		Color(0.05, 0.05, 0.25),
+		GameManager.PieceColor.BLACK
 	)
 	striker.name = "Striker"
-	striker.position = Vector3(0, MEN_HEIGHT * S * 0.5, 290.0 * S)
+	striker.position = Vector3(0, MEN_HEIGHT * 0.5, 29.0)
 	striker.freeze = true
 
-	# Attach striker script
 	var striker_script: Resource = load("res://scripts/striker.gd")
 	if striker_script:
 		striker.set_script(striker_script)
 
-	striker.collision_layer = 4  # striker layer (3)
+	striker.collision_layer = 4  # striker layer
 	striker.collision_mask = 3   # board (1) + pieces (2)
-	striker.continuous_cd = true  # prevent tunneling through walls at high speed
+	striker.continuous_cd = true
 
 	add_child(striker)
 	GameManager.striker = striker
-	print("[BOARD] Striker: pos=%s freeze=%s layer=%d mask=%d mass=%.1f ccd=%s" % [
-		striker.position, striker.freeze, striker.collision_layer, striker.collision_mask,
-		striker.mass, striker.continuous_cd])
+	print("[BOARD] Striker: pos=%s mass=%.1f damp=%.1f bounce=%.2f friction=%.2f" % [
+		striker.position, striker.mass, striker.linear_damp,
+		PIECE_BOUNCE, PIECE_FRICTION])
 
 
 func _create_piece(radius: float, height: float, mass_val: float, color: Color, piece_color: GameManager.PieceColor) -> RigidBody3D:
 	var body := RigidBody3D.new()
 	body.mass = mass_val
 	body.gravity_scale = 0.0
-	body.linear_damp = 3.0
-	body.angular_damp = 8.0
-	body.can_sleep = false  # need velocity checks
-	body.continuous_cd = true  # prevent tunneling through walls at high speed
+	body.linear_damp = PIECE_LINEAR_DAMP
+	body.angular_damp = PIECE_ANGULAR_DAMP
+	body.can_sleep = false
+	body.continuous_cd = true
 
-	# Lock Y position and rotations (keep pieces flat on board)
 	body.axis_lock_linear_y = true
 	body.axis_lock_angular_x = true
 	body.axis_lock_angular_z = true
 
-	# Mesh (cylinder)
+	# Mesh
 	var mesh_inst := MeshInstance3D.new()
 	var cyl := CylinderMesh.new()
 	cyl.top_radius = radius
@@ -343,7 +336,7 @@ func _create_piece(radius: float, height: float, mass_val: float, color: Color, 
 	mesh_inst.material_override = mat
 	body.add_child(mesh_inst)
 
-	# Collision (cylinder approximated as sphere for better physics)
+	# Collision shape
 	var col := CollisionShape3D.new()
 	var shape := CylinderShape3D.new()
 	shape.radius = radius
@@ -351,19 +344,17 @@ func _create_piece(radius: float, height: float, mass_val: float, color: Color, 
 	col.shape = shape
 	body.add_child(col)
 
-	# Physics material
+	# Physics material — real carrom values
 	var phys_mat := PhysicsMaterial.new()
-	phys_mat.bounce = 0.5
-	phys_mat.friction = 0.4
+	phys_mat.bounce = PIECE_BOUNCE
+	phys_mat.friction = PIECE_FRICTION
 	body.physics_material_override = phys_mat
 
-	body.collision_layer = 2  # pieces layer
+	body.collision_layer = 2
 	body.collision_mask = 7   # board (1) + pieces (2) + striker (4)
 
-	# Metadata
 	body.set_meta("color", piece_color)
 
-	# Collision sound detection
 	body.contact_monitor = true
 	body.max_contacts_reported = 4
 	body.body_entered.connect(_on_piece_collision.bind(body))
@@ -373,20 +364,14 @@ func _create_piece(radius: float, height: float, mass_val: float, color: Color, 
 
 func _on_piece_collision(other: Node, piece: RigidBody3D) -> void:
 	var vel := piece.linear_velocity.length()
-	print("[COLLISION] %s hit %s | vel=%.3f" % [piece.name, other.name, vel])
-	if vel < 0.05:
-		return  # skip quiet collisions
+	if vel < 5.0:  # skip inaudible collisions (cm/s)
+		return
 
 	if other is StaticBody3D:
-		# Wall collision
 		if piece == GameManager.striker:
 			AudioManager.play_collision_sound(AudioManager.SFX.STRIKER_WALL, vel)
 		else:
 			AudioManager.play_collision_sound(AudioManager.SFX.PIECE_WALL, vel)
 	elif other is RigidBody3D:
-		print("[COLLISION]   piece-piece: %s(layer=%d,mask=%d) ↔ %s(layer=%d,mask=%d)" % [
-			piece.name, piece.collision_layer, piece.collision_mask,
-			other.name, (other as RigidBody3D).collision_layer, (other as RigidBody3D).collision_mask])
-		# Piece-piece collision (only trigger from one side)
 		if piece.get_instance_id() < other.get_instance_id():
 			AudioManager.play_collision_sound(AudioManager.SFX.PIECE_COLLISION, vel)

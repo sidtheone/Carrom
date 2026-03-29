@@ -47,8 +47,8 @@ reset_board={
 [physics]
 
 3d/default_gravity=0.0
-3d/default_linear_damp=2.0
-3d/default_angular_damp=5.0
+3d/default_linear_damp=0.5
+3d/default_angular_damp=1.0
 
 [rendering]
 
