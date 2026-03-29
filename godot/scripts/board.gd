@@ -278,6 +278,12 @@ func _spawn_pieces() -> void:
 		if color_idx == 2:
 			GameManager.queen = piece
 
+	# Log piece setup
+	print("[BOARD] Spawned %d pieces" % GameManager.pieces.size())
+	for p: RigidBody3D in GameManager.pieces:
+		print("[BOARD]   %s: pos=%s freeze=%s layer=%d mask=%d mass=%.1f" % [
+			p.name, p.position, p.freeze, p.collision_layer, p.collision_mask, p.mass])
+
 
 func _spawn_striker() -> void:
 	var striker := _create_piece(
@@ -302,6 +308,9 @@ func _spawn_striker() -> void:
 
 	add_child(striker)
 	GameManager.striker = striker
+	print("[BOARD] Striker: pos=%s freeze=%s layer=%d mask=%d mass=%.1f ccd=%s" % [
+		striker.position, striker.freeze, striker.collision_layer, striker.collision_mask,
+		striker.mass, striker.continuous_cd])
 
 
 func _create_piece(radius: float, height: float, mass_val: float, color: Color, piece_color: GameManager.PieceColor) -> RigidBody3D:
@@ -349,7 +358,7 @@ func _create_piece(radius: float, height: float, mass_val: float, color: Color, 
 	body.physics_material_override = phys_mat
 
 	body.collision_layer = 2  # pieces layer
-	body.collision_mask = 3   # board (1) + pieces (2)
+	body.collision_mask = 7   # board (1) + pieces (2) + striker (4)
 
 	# Metadata
 	body.set_meta("color", piece_color)
@@ -364,6 +373,7 @@ func _create_piece(radius: float, height: float, mass_val: float, color: Color, 
 
 func _on_piece_collision(other: Node, piece: RigidBody3D) -> void:
 	var vel := piece.linear_velocity.length()
+	print("[COLLISION] %s hit %s | vel=%.3f" % [piece.name, other.name, vel])
 	if vel < 0.05:
 		return  # skip quiet collisions
 
@@ -374,6 +384,9 @@ func _on_piece_collision(other: Node, piece: RigidBody3D) -> void:
 		else:
 			AudioManager.play_collision_sound(AudioManager.SFX.PIECE_WALL, vel)
 	elif other is RigidBody3D:
+		print("[COLLISION]   piece-piece: %s(layer=%d,mask=%d) ↔ %s(layer=%d,mask=%d)" % [
+			piece.name, piece.collision_layer, piece.collision_mask,
+			other.name, (other as RigidBody3D).collision_layer, (other as RigidBody3D).collision_mask])
 		# Piece-piece collision (only trigger from one side)
 		if piece.get_instance_id() < other.get_instance_id():
 			AudioManager.play_collision_sound(AudioManager.SFX.PIECE_COLLISION, vel)
