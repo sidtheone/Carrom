@@ -111,8 +111,8 @@ func _update_aim_visual() -> void:
 	if _aim_indicator == null:
 		return
 	var angle_rad := deg_to_rad(GameManager.aim_angle)
-	var flip := 1.0 if GameManager.current_player == 1 else -1.0
-	# Offset cone in shoot direction: P1 toward +Z, P2 toward -Z
+	var flip := -1.0 if GameManager.current_player == 1 else 1.0
+	# Offset cone in shoot direction: P1 toward -Z, P2 toward +Z
 	_aim_indicator.position = Vector3(
 		sin(angle_rad) * flip * 0.35,
 		0.03,

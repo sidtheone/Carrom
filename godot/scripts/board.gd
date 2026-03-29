@@ -288,7 +288,7 @@ func _spawn_striker() -> void:
 		GameManager.PieceColor.BLACK  # doesn't matter for striker
 	)
 	striker.name = "Striker"
-	striker.position = Vector3(0, MEN_HEIGHT * S * 0.5, -290.0 * S)
+	striker.position = Vector3(0, MEN_HEIGHT * S * 0.5, 290.0 * S)
 	striker.freeze = true
 
 	# Attach striker script

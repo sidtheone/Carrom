@@ -92,8 +92,8 @@ func place_striker_at(x_pos: float) -> void:
 	if current_state != State.PLACE_STRIKER or striker == null:
 		return
 	var clamped_x := clampf(x_pos, PLACEMENT_X_MIN, PLACEMENT_X_MAX)
-	# Board is on XZ plane, Y is up. Striker placed along Z = PLACEMENT_Y
-	var placement_z: float = PLACEMENT_Y if current_player == 1 else -PLACEMENT_Y
+	# P1 at bottom (+Z), P2 at top (-Z) from camera's perspective
+	var placement_z: float = -PLACEMENT_Y if current_player == 1 else PLACEMENT_Y
 	striker.global_position = Vector3(clamped_x, 0.02, placement_z)
 	striker.linear_velocity = Vector3.ZERO
 	striker.angular_velocity = Vector3.ZERO
@@ -137,9 +137,9 @@ func _shoot_striker() -> void:
 	if striker == null:
 		return
 	striker.freeze = false
-	# Player 1 at Z=-2.9 shoots toward +Z (center), Player 2 at Z=+2.9 shoots toward -Z
+	# P1 at Z=+2.9 shoots toward -Z (center), P2 at Z=-2.9 shoots toward +Z
 	var angle_rad := deg_to_rad(aim_angle)
-	var direction := Vector3(sin(angle_rad), 0.0, cos(angle_rad))
+	var direction := Vector3(sin(angle_rad), 0.0, -cos(angle_rad))
 	if current_player == 2:
 		direction.z = -direction.z
 	var impulse := direction * power * 2.0  # scale for feel
@@ -203,7 +203,7 @@ func _resolve_turn() -> void:
 func _handle_foul() -> void:
 	# Reset striker to baseline
 	var next_player := 2 if current_player == 1 else 1
-	var placement_z: float = PLACEMENT_Y if next_player == 1 else -PLACEMENT_Y
+	var placement_z: float = -PLACEMENT_Y if next_player == 1 else PLACEMENT_Y
 	striker.global_position = Vector3(0, 0.02, placement_z)
 	striker.linear_velocity = Vector3.ZERO
 	striker.angular_velocity = Vector3.ZERO
