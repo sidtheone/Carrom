@@ -209,12 +209,13 @@ func _shoot_striker() -> void:
 	if current_player == 2:
 		direction.z = -direction.z
 
-	# Compute velocity
-	var speed := power * 2.0 / striker.mass
+	# Compute velocity — do NOT divide by mass, that makes it too slow.
+	# With linear_damp=3.0, max travel ≈ speed/damp. Need speed≈10 to cross board.
+	var speed := power * 2.0
 	var target_velocity := direction * speed
 
 	print("[SHOOT] direction  = %s" % direction)
-	print("[SHOOT] speed      = %.5f (power=%.3f * 2.0 / mass=%.1f)" % [speed, power, striker.mass])
+	print("[SHOOT] speed      = %.5f (power=%.3f * 2.0)" % [speed, power])
 	print("[SHOOT] target_vel = %s (magnitude=%.5f)" % [target_velocity, target_velocity.length()])
 
 	# Apply velocity
