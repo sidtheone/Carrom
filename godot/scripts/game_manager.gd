@@ -120,8 +120,8 @@ func start_game() -> void:
 
 
 func _set_state(new_state: State) -> void:
-	var old_name := State.keys()[current_state]
-	var new_name := State.keys()[new_state]
+	var old_name: String = State.keys()[current_state]
+	var new_name: String = State.keys()[new_state]
 	print("[STATE] %s → %s | player=%d" % [old_name, new_name, current_player])
 	current_state = new_state
 	state_changed.emit(new_state)
