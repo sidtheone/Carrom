@@ -1,42 +1,48 @@
 extends RigidBody3D
 
 ## Striker input handling — placement, aiming, and power control.
+## Uses camera raycast for aim (point-to-aim) — works identically for both players.
 ## Scale: 1 unit = 1 cm.
 
-var _aim_indicator: MeshInstance3D = null
+const AIM_DOT_COUNT := 12
+const AIM_DOT_SPACING := 4.0  # cm between dots
+const AIM_DOT_RADIUS := 0.4   # cm
+
+var _aim_dots: Array[MeshInstance3D] = []
+var _dot_materials: Array[StandardMaterial3D] = []
 
 
 func _ready() -> void:
-	_create_aim_indicator()
+	_create_aim_dots()
 	GameManager.state_changed.connect(_on_state_changed)
 
 
-func _create_aim_indicator() -> void:
-	_aim_indicator = MeshInstance3D.new()
-	var cone := CylinderMesh.new()
-	cone.top_radius = 0.0
-	cone.bottom_radius = 2.0
-	cone.height = 60.0
-	_aim_indicator.mesh = cone
-	_aim_indicator.rotation.x = deg_to_rad(90)
-	_aim_indicator.position = Vector3(0, 3.0, 35.0)
+func _create_aim_dots() -> void:
+	var sphere := SphereMesh.new()
+	sphere.radius = AIM_DOT_RADIUS
+	sphere.height = AIM_DOT_RADIUS * 2.0
+	sphere.radial_segments = 8
+	sphere.rings = 4
 
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(1, 0.3, 0.3, 0.7)
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	_aim_indicator.material_override = mat
-	_aim_indicator.visible = false
-	add_child(_aim_indicator)
+	for i in range(AIM_DOT_COUNT):
+		var dot := MeshInstance3D.new()
+		dot.mesh = sphere
+
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = Color(1, 1, 1, 0.8)
+		mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		dot.material_override = mat
+		dot.visible = false
+		add_child(dot)
+
+		_aim_dots.append(dot)
+		_dot_materials.append(mat)
 
 
 func _on_state_changed(new_state: int) -> void:
-	match new_state:
-		GameManager.State.AIM:
-			_aim_indicator.visible = true
-		GameManager.State.POWER:
-			_aim_indicator.visible = true
-		_:
-			_aim_indicator.visible = false
+	var show := new_state == GameManager.State.AIM or new_state == GameManager.State.POWER
+	for dot in _aim_dots:
+		dot.visible = show
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -52,35 +58,75 @@ func _unhandled_input(event: InputEvent) -> void:
 			_handle_power(event)
 
 
+# --- Raycast helper ---
+
+func _mouse_to_board(mouse_pos: Vector2) -> Vector3:
+	## Raycast from camera through mouse position onto the board plane (Y=0).
+	## Returns the world-space hit point, or Vector3.INF if ray is parallel to board.
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return Vector3.INF
+	var origin := camera.project_ray_origin(mouse_pos)
+	var normal := camera.project_ray_normal(mouse_pos)
+	if absf(normal.y) < 0.001:
+		return Vector3.INF  # ray parallel to board
+	var t := -origin.y / normal.y
+	return origin + normal * t
+
+
+# --- Placement ---
+
 func _handle_placement(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
-		var viewport := get_viewport()
-		var mouse_x: float = event.position.x
-		var screen_w: float = viewport.get_visible_rect().size.x
-		# Map screen X to world X: board is 74 cm wide
-		var world_x: float = (mouse_x - screen_w / 2.0) / screen_w * 74.0
-		if GameManager.current_player == 2:
-			world_x = -world_x
-		GameManager.place_striker_at(world_x)
+		var hit := _mouse_to_board(event.position)
+		if hit != Vector3.INF:
+			GameManager.place_striker_at(hit.x)
 
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			GameManager.confirm_placement()
 
 
+# --- Aiming ---
+
 func _handle_aim(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
-		var viewport := get_viewport()
-		var mouse_x: float = event.position.x
-		var screen_w: float = viewport.get_visible_rect().size.x
-		var angle: float = -(mouse_x - screen_w / 2.0) / (screen_w / 2.0) * 75.0
-		GameManager.set_aim_angle(angle)
-		_update_aim_visual()
+		var hit := _mouse_to_board(event.position)
+		if hit == Vector3.INF:
+			return
+
+		var dir := hit - global_position
+		dir.y = 0.0
+
+		# Zero-direction guard — mouse on striker
+		if dir.length() < 0.1:
+			return
+
+		dir = dir.normalized()
+
+		# Forward-hemisphere guard — can't aim backward toward own wall
+		var forward := Vector3(0, 0, -signf(global_position.z))
+		if dir.dot(forward) < 0.1:
+			return
+
+		GameManager.set_aim_direction(dir)
+		_update_aim_dots(dir)
 
 	elif event is InputEventMouseButton:
 		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
 			GameManager.confirm_aim()
 
+
+func _update_aim_dots(dir: Vector3) -> void:
+	for i in range(AIM_DOT_COUNT):
+		var dist := (i + 1) * AIM_DOT_SPACING
+		_aim_dots[i].position = dir * dist + Vector3(0, 1.0, 0)
+		# Fade opacity from 0.8 (near) to 0.1 (far)
+		var alpha := lerpf(0.8, 0.1, float(i) / float(AIM_DOT_COUNT - 1))
+		_dot_materials[i].albedo_color = Color(1, 1, 1, alpha)
+
+
+# --- Power ---
 
 func _handle_power(event: InputEvent) -> void:
 	if not event is InputEventMouseButton:
@@ -97,16 +143,3 @@ func _handle_power(event: InputEvent) -> void:
 		GameManager.power = 0.0
 		AudioManager.stop_power_bar()
 		GameManager._set_state(GameManager.State.AIM)
-
-
-func _update_aim_visual() -> void:
-	if _aim_indicator == null:
-		return
-	var angle_rad := deg_to_rad(GameManager.aim_angle)
-	var flip := -1.0 if GameManager.current_player == 1 else 1.0
-	_aim_indicator.position = Vector3(
-		sin(angle_rad) * flip * 35.0,
-		3.0,
-		cos(angle_rad) * flip * 35.0
-	)
-	_aim_indicator.rotation = Vector3(deg_to_rad(90), -angle_rad * flip, 0)

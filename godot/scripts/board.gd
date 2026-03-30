@@ -341,11 +341,11 @@ func _create_piece(radius: float, height: float, mass_val: float, color: Color, 
 	mesh_inst.material_override = mat
 	body.add_child(mesh_inst)
 
-	# Collision shape
+	# Collision shape — sphere instead of cylinder for reliable collision detection
+	# (Godot's built-in physics has poor cylinder-vs-box for thin discs)
 	var col := CollisionShape3D.new()
-	var shape := CylinderShape3D.new()
+	var shape := SphereShape3D.new()
 	shape.radius = radius
-	shape.height = height
 	col.shape = shape
 	body.add_child(col)
 

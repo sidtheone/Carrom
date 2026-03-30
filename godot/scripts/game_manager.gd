@@ -21,7 +21,6 @@ const BOARD_HALF := 37.0
 const PLACEMENT_Y := -29.0
 const PLACEMENT_X_MIN := -12.3
 const PLACEMENT_X_MAX := 12.3
-const MAX_AIM_ANGLE := 75.0  # degrees
 const MAX_POWER := 5.0
 const POWER_CHARGE_SPEED := 3.0  # units per second
 const STOP_THRESHOLD := 0.5  # cm/s — imperceptible at this scale
@@ -35,7 +34,7 @@ const SCORE_QUEEN := 50
 var current_state: State = State.PLACE_STRIKER
 var current_player: int = 1
 var scores: Array[int] = [0, 0]
-var aim_angle: float = 0.0
+var aim_direction: Vector3 = Vector3(0, 0, -1)
 var power: float = 0.0
 var is_charging: bool = false
 
@@ -148,10 +147,10 @@ func confirm_placement() -> void:
 
 # --- Aiming ---
 
-func set_aim_angle(angle_deg: float) -> void:
+func set_aim_direction(dir: Vector3) -> void:
 	if current_state != State.AIM:
 		return
-	aim_angle = clampf(angle_deg, -MAX_AIM_ANGLE, MAX_AIM_ANGLE)
+	aim_direction = dir.normalized()
 
 
 func confirm_aim() -> void:
@@ -178,19 +177,12 @@ func _shoot_striker() -> void:
 
 	striker.freeze = false
 
-	var angle_rad := deg_to_rad(aim_angle)
-	var direction := Vector3(-sin(angle_rad), 0.0, -cos(angle_rad))
-	if current_player == 2:
-		direction.x = -direction.x
-		direction.z = -direction.z
-
-	# With linear_damp=0.5, max travel = speed/damp.
-	# Full power: speed=110 → travel=220cm = 3x board (74cm).
+	# aim_direction is already the world-space shot direction (set by raycast)
 	var speed := power * 22.0
-	striker.linear_velocity = direction * speed
+	striker.linear_velocity = aim_direction * speed
 
 	print("[SHOOT] power=%.2f speed=%.1f dir=%s vel=%s" % [
-		power, speed, direction, striker.linear_velocity])
+		power, speed, aim_direction, striker.linear_velocity])
 
 	pocketed_this_turn.clear()
 	striker_pocketed = false
