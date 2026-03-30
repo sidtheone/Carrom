@@ -26,6 +26,11 @@ const WALL_FRICTION := 0.1       # smooth lacquered wood
 
 
 func _ready() -> void:
+	# Clear stale refs from previous scene load (autoload persists across reloads)
+	GameManager.pieces.clear()
+	GameManager.striker = null
+	GameManager.queen = null
+
 	_build_board_surface()
 	_build_boundaries()
 	_build_pockets()

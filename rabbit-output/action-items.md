@@ -1,27 +1,72 @@
 # Carrom Game Loop — Action Items
 
-## Critical (game-breaking)
+Consolidated from 8 independent analyses. 25 unique issues.
+Updated: 2026-03-30
 
-- **Fix simulation stop-detection.** Add a consecutive-frame counter (10-15 frames / ~0.2s) to `_check_simulation_complete` in `game_manager.gd:196`. Single-frame velocity check false-positives during mid-collision deceleration, silently corrupting board state. Threshold value (0.5) stays — the counter is the fix.
+---
 
-- **Fix striker-foul + queen orphaning.** In `_resolve_turn` (game_manager.gd:208), striker foul returns early at line 214 without evaluating queen state. If both striker and queen are pocketed same shot, queen is permanently stuck invisible with no path to recovery. `_handle_foul` must reset `queen_pocketed_by` and return queen to center.
+## Fix Now (crash/corruption — game is unplayable without these)
 
-## High (gameplay bugs)
+- [x] **Clear `pieces[]` on reload.** Added `GameManager.pieces.clear()` + null striker/queen at top of `board.gd._ready()`. *(Fixed 2026-03-30)*
 
-- **Block zero-power shots.** Releasing power at 0.0 fires a speed=0 shot, instant simulation resolve, free turn pass with no penalty. Either enforce `MIN_POWER` (~0.5) or treat zero-power release as cancel-back-to-AIM. Consider a minimum simulation time (0.5-1.0s) which fixes this AND helps stop-detection.
+- [x] **Add consecutive-frame stop counter.** 12-frame confirm counter + 0.5s min simulation time + moved to `_physics_process`. *(Fixed 2026-03-30)*
 
-- **Decide on stop threshold value.** The revamp scaled threshold 100x (0.005 → 0.5) but board-relative it's 10x looser than the original. If old value was tuned, board-equivalent is 0.05 cm/s, not 0.5. Trade-off: 0.05 adds ~1.8s to simulation tails but is more faithful. With the frame counter fix, 0.5 is acceptable.
+- [x] **Guard `on_piece_pocketed` for idempotency.** Added `if not body.visible: return` guard at top. *(Fixed 2026-03-30)*
 
-## Medium (code quality)
+---
 
-- **Expose `cancel_power()` on GameManager.** Replace direct `GameManager._set_state()` call in `striker.gd:99` with a public method. Preserves state machine encapsulation.
+## Fix Before Playtesting (scoring is wrong)
 
-- **Add overlap check to `_return_piece_to_center`.** Spacing formula (`2.0 + count * 1.5` cm) with random jitter can place returned pieces on top of existing center pieces. Physics explosion possible.
+- [ ] **Subtract score on foul piece return.** `_handle_foul()` at `game_manager.gd:237` returns a piece but keeps its score. Add score subtraction matching what `_return_opponent_pieces` does. *(World1, Monkey, Rabbit — 4 sources)*
 
-- **Gate debug prints behind a flag.** 15+ `print()` calls across game_manager.gd and board.gd with no debug guard. Use `OS.is_debug_build()` or a `const DEBUG` flag. Remove redundant `_physics_process` logging (subset of `_log_simulation_frame`).
+- [ ] **Subtract queen score on return.** `_return_queen_to_center()` at `game_manager.gd:288` resets `queen_pocketed_by` but not `scores[]`. Subtract `SCORE_QUEEN` (50). Queen is RED, excluded from opponent-return color check. *(World1-Moon, 90% confidence)*
 
-## Low (architectural debt, no rush)
+- [ ] **Handle queen on striker foul.** `_resolve_turn()` returns early at line 214 on striker foul, never reaching queen logic. If `queen_pocketed_by == current_player`, return queen to center inside `_handle_foul`. *(Rabbit-Rat, Adversarial — 3 sources)*
 
-- **Decouple visibility from game state.** `piece.visible` is the canonical "in play" check across 6+ callsites. Add `is_pocketed` metadata to pieces before adding any visual effects on pocketing.
+- [ ] **Block pocket events during resolution.** Add `var _resolving: bool = false` flag. Set true at top of `_resolve_turn`, false at end. Guard `on_piece_pocketed` with `if _resolving: return`. Returned pieces drifting into pockets corrupt mid-resolution state. *(Monkey, World1, Adversarial — 3 sources)*
 
-- **Consider input abstraction.** All input is raw `InputEventMouse*` in striker.gd. Fine for mouse-only, expensive to retrofit for touch/gamepad later.
+---
+
+## Fix After Playtesting (decide if these matter in practice)
+
+- [ ] **Fix d2 spacing constant.** `board.gd:221` — change `d2 = 2.0 * r - 0.4` to `2.0 * r + 0.1`. Six outer-ring pieces have sub-collision-diameter spacing. Known from project memory. *(World2-Hermit, memory)*
+
+- [ ] **Add minimum power threshold.** Reject `release_power()` when `power < 0.3` or add minimum simulation time (0.5s). Instant click-release wastes turn silently. *(5 sources unanimous)*
+
+- [ ] **Add overlap check to `_return_piece_to_center`.** Inner offset (2.0 cm) can overlap queen at origin. Use spatial query or scan for free space before placement. *(4 sources)*
+
+- [ ] **Fix win condition rules.** `game_manager.gd:311` requires `queen_pocketed_by == winner`. Standard carrom: any player can pocket queen, what matters is covering. Decide: standard rules or house rules? *(Adversarial, Self-Audit)*
+
+- [ ] **Expose `cancel_power()` on GameManager.** Replace direct `GameManager._set_state()` call at `striker.gd:99` with a public method. *(5 sources)*
+
+- [ ] **Add simulation timeout.** After ~15s, force-zero all velocities and resolve. Prevents infinite hang from physics glitches. *(2 sources)*
+
+---
+
+## Decide Later (UX/polish, won't know priority until playing)
+
+- [ ] **Assess damping model.** `linear_damp=0.5` produces exponential decay, 11s settling. Real carrom: 2-4s. Options: increase damp to ~2.0 (quick), or implement Coulomb friction via `_integrate_forces` (correct). *(World2-Hermit, Stop Threshold)*
+
+- [ ] **Add AIM→PLACEMENT back-navigation.** Right-click cancels POWER→AIM but nothing cancels AIM→PLACEMENT. *(World2-Fool)*
+
+- [ ] **Fix input mapping.** `striker.gd:61` maps full screen width to 74cm but valid range is ±12.3cm. Only 33% of screen active. Use raycasting instead. *(World2-Fool, Monkey)*
+
+- [ ] **Add negative score floor.** `game_manager.gd:278` — `scores[]` can go negative. Add `max(0, ...)` or decide if negative scores are intentional. *(Monkey, Rabbit)*
+
+- [ ] **Fix collision sound for gentle hits.** `board.gd:376` — instance_id dedup means the piece with lower ID checks its own velocity, not relative. Glancing blows can be silent. *(World2-HP)*
+
+- [ ] **Add stalemate/forfeit/timeout.** Queen limbo + no stalemate detection = possible deadlock. No pause either. *(Monkey)*
+
+- [ ] **Fix score UX jumps.** Points added on pocket, subtracted on resolution. Player sees temporary spike. Either defer scoring to resolution or don't display during simulation. *(Adversarial, Self-Audit)*
+
+- [ ] **Decouple visibility from game state.** `piece.visible` is "in play" flag across 6+ callsites. Add `is_pocketed` metadata before adding visual effects. *(Rabbit-Ox)*
+
+- [ ] **Gate debug prints.** 15+ `print()` calls with no debug flag. Wrap in `OS.is_debug_build()` or strip. *(Rabbit-Snake)*
+
+- [ ] **Increase audio pool or add priority.** 8 players, break shots generate 10+ collisions. Most dramatic moment sounds worst. *(Monkey, Rabbit)*
+
+- [ ] **Remove dead camera callback.** `camera_controller.gd:58` — `_on_turn_changed` is `pass`. Remove handler and signal connection. *(World1-Tower)*
+
+- [ ] **Fix striker BLACK metadata.** `board.gd:289` — striker created with `PieceColor.BLACK`. Safe today (not in `pieces[]`), latent if arrays merge. *(Monkey, Adversarial)*
+
+- [ ] **Fix inconsistent Y positions.** Pieces spawn at Y=0.1, return at Y=0.2. Negligible impact but inconsistent. *(World2-Hermit)*

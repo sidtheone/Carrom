@@ -25,6 +25,8 @@ const MAX_AIM_ANGLE := 75.0  # degrees
 const MAX_POWER := 5.0
 const POWER_CHARGE_SPEED := 3.0  # units per second
 const STOP_THRESHOLD := 0.5  # cm/s — imperceptible at this scale
+const STOP_CONFIRM_FRAMES := 12  # consecutive frames below threshold before resolving (~0.2s at 60fps)
+const MIN_SIMULATION_TIME := 0.5  # seconds — prevents zero-power instant resolve
 const SCORE_BLACK := 10
 const SCORE_WHITE := 20
 const SCORE_QUEEN := 50
@@ -53,6 +55,10 @@ var game_active: bool = true
 var _sim_frame_count: int = 0
 var _sim_log_interval: int = 30
 
+# --- Stop detection ---
+var _stop_confirm_count: int = 0
+var _sim_elapsed: float = 0.0
+
 
 func _ready() -> void:
 	set_process(true)
@@ -76,13 +82,15 @@ func _process(delta: float) -> void:
 			_sim_frame_count += 1
 			if _sim_frame_count <= 5 or _sim_frame_count % _sim_log_interval == 0:
 				_log_simulation_frame()
-			_check_simulation_complete()
 
 
-func _physics_process(_delta: float) -> void:
-	if current_state == State.SIMULATION and striker and _sim_frame_count <= 3:
-		print("[PHYS] frame=%d vel=%.2f pos=%s" % [
-			_sim_frame_count, striker.linear_velocity.length(), striker.global_position])
+func _physics_process(delta: float) -> void:
+	if current_state == State.SIMULATION:
+		_sim_elapsed += delta
+		if striker and _sim_frame_count <= 3:
+			print("[PHYS] frame=%d vel=%.2f pos=%s" % [
+				_sim_frame_count, striker.linear_velocity.length(), striker.global_position])
+		_check_simulation_complete()
 
 
 func _log_simulation_frame() -> void:
@@ -188,6 +196,8 @@ func _shoot_striker() -> void:
 	striker_pocketed = false
 	own_piece_pocketed = false
 	_sim_frame_count = 0
+	_stop_confirm_count = 0
+	_sim_elapsed = 0.0
 	_set_state(State.SIMULATION)
 
 
@@ -196,13 +206,26 @@ func _shoot_striker() -> void:
 func _check_simulation_complete() -> void:
 	if striker == null:
 		return
+	if _sim_elapsed < MIN_SIMULATION_TIME:
+		return
+
+	var all_stopped := true
 	for piece in pieces:
 		if piece.visible and piece.linear_velocity.length() > STOP_THRESHOLD:
-			return
-	if striker.linear_velocity.length() > STOP_THRESHOLD:
-		return
-	print("[SIM] === ALL STOPPED at frame %d ===" % _sim_frame_count)
-	_resolve_turn()
+			all_stopped = false
+			break
+	if all_stopped and striker.linear_velocity.length() > STOP_THRESHOLD:
+		all_stopped = false
+
+	if all_stopped:
+		_stop_confirm_count += 1
+	else:
+		_stop_confirm_count = 0
+
+	if _stop_confirm_count >= STOP_CONFIRM_FRAMES:
+		print("[SIM] === ALL STOPPED at frame %d (confirmed over %d frames) ===" % [
+			_sim_frame_count, STOP_CONFIRM_FRAMES])
+		_resolve_turn()
 
 
 func _resolve_turn() -> void:
@@ -327,6 +350,8 @@ func _end_game(winner: int) -> void:
 func on_piece_pocketed(body: RigidBody3D) -> void:
 	if not game_active:
 		return
+	if not body.visible:
+		return  # already pocketed (duplicate body_entered signal)
 
 	AudioManager.play_sound(AudioManager.SFX.POT, 0.7)
 
