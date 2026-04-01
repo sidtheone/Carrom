@@ -134,6 +134,7 @@ func place_striker_at(x_pos: float) -> void:
 	var clamped_x := clampf(x_pos, PLACEMENT_X_MIN, PLACEMENT_X_MAX)
 	var placement_z: float = -PLACEMENT_Y if current_player == 1 else PLACEMENT_Y
 	striker.global_position = Vector3(clamped_x, 0.2, placement_z)
+	striker.rotation = Vector3.ZERO
 	striker.linear_velocity = Vector3.ZERO
 	striker.angular_velocity = Vector3.ZERO
 	striker.freeze = true

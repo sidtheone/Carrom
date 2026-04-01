@@ -105,8 +105,8 @@ func _handle_aim(event: InputEvent) -> void:
 		dir = dir.normalized()
 
 		# Forward-hemisphere guard — can't aim backward toward own wall
-		var forward := Vector3(0, 0, -signf(global_position.z))
-		if dir.dot(forward) < 0.1:
+		var forward := Vector3(0, 0, -1) if GameManager.current_player == 1 else Vector3(0, 0, 1)
+		if dir.dot(forward) < -0.2:
 			return
 
 		GameManager.set_aim_direction(dir)
