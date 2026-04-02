@@ -1,5 +1,7 @@
 # Carrom Board 3D — Complete Documentation
 
+> Remaster of an original C++ OpenGL project, rebuilt from scratch in Godot 4.6 with modern architecture, real carrom physics, and full game rules.
+
 ## Table of Contents
 
 1. [Quick Start](#1-quick-start)

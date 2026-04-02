@@ -1,8 +1,20 @@
 # Carrom Board 3D
 
-A 3D carrom board game built with Godot 4.6. Two-player local multiplayer with procedurally generated board, physics-based gameplay, and full carrom rules including queen mechanics.
+A remaster of my original C++ OpenGL carrom game, rebuilt from scratch in Godot 4.6.
 
-No textures or external assets — the entire board, pieces, and UI are generated procedurally.
+The original was written in raw C++ with OpenGL/GLUT for rendering, Hooke's law spring physics, and OpenAL for audio. This version reimagines the entire project using Godot's scene system, GDScript, and built-in physics engine while keeping the same core idea: a fully procedural 3D carrom board with no textures or external mesh assets.
+
+### Original (C++) → Remaster (Godot 4.6)
+
+| | Original | Remaster |
+|---|---|---|
+| **Engine** | Raw C++ / OpenGL / GLUT | Godot 4.6 (Forward Plus) |
+| **Rendering** | Manual OpenGL draw calls | Procedural MeshInstance3D nodes |
+| **Physics** | Custom spring-based (Hooke's law) | Godot RigidBody3D with real carrom parameters |
+| **Audio** | OpenAL + ALUT | AudioStreamPlayer pool with velocity-based volume |
+| **Input** | GLUT mouse callbacks | Godot InputEvent system |
+| **Architecture** | Monolithic game loop | Signal-based state machine with autoload singletons |
+| **Game rules** | Basic pocketing | Full carrom rules: queen cover, fouls, extra turns, win condition |
 
 ## Requirements
 

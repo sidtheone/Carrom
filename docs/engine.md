@@ -1,6 +1,6 @@
 # Engine Trace: Striker Release → Collisions → Simulation Stop
 
-> Godot 4.6 — GDScript physics engine architecture
+> Godot 4.6 remaster — GDScript physics engine architecture (replaces original C++ Hooke's law spring system)
 
 Complete trace of the game engine from the moment the player releases the
 mouse button to fire, through physics simulation and collisions, to the
