@@ -6,61 +6,63 @@
 
 ---
 
+> **Status update (2026-03-31):** Major revamp completed across commits `91a6200` through `483f75f`. 5 of 8 findings are now resolved. 3 remain open. See status tags below.
+
 ## Synthesis
 
 The game loop is clean for its stage: a 4-state machine (PLACE_STRIKER -> AIM -> POWER -> SIMULATION) centralized in a GameManager autoload, with input handling delegated to striker.gd and presentation to hud.gd. Signal-driven, readable, no spaghetti. The architecture is sound for a local 2-player carrom game.
 
-Three things need attention now, one needs a decision, and the rest can wait.
+~~**The simulation stop-detection is fragile.**~~ **✅ FIXED** (commit `8a0e133`). Now uses `STOP_CONFIRM_FRAMES := 12` consecutive frames below threshold + `MIN_SIMULATION_TIME := 0.5` seconds before any stop-checking. Moved to `_physics_process` for frame-accurate detection.
 
-**The simulation stop-detection is fragile.** `_check_simulation_complete()` polls every `_process` frame and resolves the turn the instant all velocities dip below 0.5 cm/s. Physics collisions can momentarily slow pieces below threshold mid-bounce — a piece ricocheting off a wall or another piece passes through a near-zero velocity at the inflection point. This is the highest-risk bug: premature turn resolution mid-simulation would corrupt game state silently. Fix: require N consecutive frames below threshold (a simple counter), or only check after a minimum simulation time.
+~~**Zero-power shots are a free pass.**~~ **✅ FIXED** (commit `8a0e133`). `MIN_SIMULATION_TIME := 0.5` prevents instant resolve even with `power = 0.0`. The 0.5s floor eliminates the free-pass exploit.
 
-**Zero-power shots are a free pass.** Releasing the power button immediately fires `_shoot_striker()` with `power = 0.0`, producing `speed = 0.0`. Simulation starts, all pieces are already stopped, `_resolve_turn()` fires instantly. No foul, no penalty — the current player just gets another placement. Depending on intent: either enforce a minimum power, or treat zero-power as cancellation (return to AIM).
+**Visibility is load-bearing game state.** ⚠️ **STILL OPEN.** `piece.visible` remains the canonical "in play" check across 6+ callsites. Architectural debt — not urgent, but the earlier you add an `is_in_play` flag, the cheaper the migration.
 
-**Visibility is load-bearing game state.** `piece.visible` is the canonical "in play" check — used in stop detection, win checking, piece counting, foul handling, and HUD updates. If any future system (animation, VFX, LOD) toggles visibility for rendering reasons, game logic breaks. This is architectural debt — not urgent, but the earlier you add an `is_in_play` flag, the cheaper the migration.
-
-**Encapsulation break in striker.gd:99** — the striker directly calls `GameManager._set_state()` (a private method) to cancel power and return to AIM. This works but creates an implicit state transition outside the state machine owner. Consider exposing a `cancel_power()` method on GameManager instead.
+**Encapsulation break in striker.gd** ⚠️ **STILL OPEN** (now at line ~145). The striker directly calls `GameManager._set_state()` (a private method) to cancel power and return to AIM. Consider exposing a `cancel_power()` method on GameManager instead.
 
 ### Findings Summary
 
 **Tiger (Stress Test)** — 2/4 critical
 
-- `_check_simulation_complete` (HIGH) — Single-frame velocity check can false-positive during mid-collision deceleration. Silent corruption.
-- `_return_piece_to_center` overlap (MEDIUM) — Spacing formula `2.0 + count * 1.5` with random jitter has no collision check against existing center pieces. Can stack returned pieces.
-- Negative scores (LOW) — `_return_opponent_pieces` subtracts points with no floor. Score can go negative. May be intentional.
-- Camera during P2 turn (LOW) — Camera flips 180 degrees but input mapping only negates `world_x` for placement. Aim angle negation relies on direction flip in `_shoot_striker` line 176. Works but the inversion logic is spread across 3 locations.
+- ~~`_check_simulation_complete` (HIGH)~~ ✅ **FIXED** — Now requires 12 consecutive frames below threshold + 0.5s minimum simulation time.
+- `_return_piece_to_center` overlap (MEDIUM) — ⚠️ **STILL OPEN** — Spacing formula spreads pieces but has no collision check against existing center pieces.
+- Negative scores (LOW) — Unchanged. Net zero by design, low risk.
+- ~~Camera during P2 turn (LOW)~~ ✅ **FIXED** — Raycast aim system (commit `483f75f`) eliminated all 3 P2 inversion locations.
 
 **Rat (Consequences)** — 2/4 notable
 
-- Zero-power shot (HIGH) — `power=0.0` -> `speed=0.0` -> instant simulation resolve -> free turn. Unintentional pass mechanic.
-- Striker foul overrides queen evaluation (MEDIUM) — `_resolve_turn` returns early on striker foul (line 214), never evaluating queen coverage. If striker + queen are both pocketed in same shot, queen state is silently orphaned: `queen_pocketed_by` stays set but `_handle_foul` doesn't address it.
-- Silent striker script failure (LOW) — `load("res://scripts/striker.gd")` at board.gd:296 — if load fails, striker has no input handling. No error, no fallback.
-- Audio player pool exhaustion (LOW) — 8 pooled AudioStreamPlayers. A fast multi-piece collision chain could exhaust the pool, interrupting the oldest sound. Acceptable for now.
+- ~~Zero-power shot (HIGH)~~ ✅ **FIXED** — MIN_SIMULATION_TIME prevents instant resolve.
+- ~~Striker foul overrides queen evaluation (MEDIUM)~~ ✅ **FIXED** (commit `8a0e133`) — Early return on striker foul now prevents queen orphaning; `queen_pocketed_by` is reset to `-1` when queen not covered.
+- Silent striker script failure (LOW) — Unchanged.
+- Audio player pool exhaustion (LOW) — Unchanged. Acceptable.
 
 **Snake (Scope)** — 2/3 cuttable
 
-- Debug print statements everywhere (MEDIUM) — 15+ print() calls across game_manager.gd and board.gd. Not behind a debug flag. Will spam the console in release.
-- `_sim_frame_count` / `_sim_log_interval` infra (LOW) — Simulation logging scaffolding. Useful during physics tuning, removable after.
-- `_physics_process` in game_manager.gd (LOW) — Only logs first 3 frames of simulation. Could be folded into `_log_simulation_frame` or removed.
+- Debug print statements everywhere (MEDIUM) — ⚠️ **STILL OPEN** — 10+ unguarded `print()` calls remain across game_manager.gd and board.gd.
+- `_sim_frame_count` / `_sim_log_interval` infra (LOW) — Unchanged. Keep during physics tuning.
+- `_physics_process` in game_manager.gd (LOW) — Unchanged. Redundant logging.
 
 **Ox (First Principles)** — 2/3 architectural
 
-- Visibility as game state (MEDIUM) — `piece.visible` doubles as the "is this piece in play" flag across 6+ callsites. Conflates rendering with game logic.
-- Private method called externally (MEDIUM) — striker.gd:99 calls `GameManager._set_state()` directly. Breaks encapsulation of the state machine.
-- Mouse-only input (LOW) — All input is mouse-based. No abstraction layer for touch/gamepad. Fine for now, expensive to retrofit later.
+- Visibility as game state (MEDIUM) — ⚠️ **STILL OPEN** — `piece.visible` used as "in play" across 6+ callsites.
+- Private method called externally (MEDIUM) — ⚠️ **STILL OPEN** — striker.gd:~145 calls `GameManager._set_state()` directly.
+- Mouse-only input (LOW) — Unchanged. Acceptable for mouse-targeted gameplay.
 
-### Action Items
+### Action Items (Updated)
 
-1. **Fix simulation stop-detection.** Add a consecutive-frame counter (e.g., 10 frames below threshold) before resolving. This is the only finding that can silently corrupt a game in progress.
-2. **Decide on zero-power behavior.** Either enforce `MIN_POWER` (e.g., 0.5) or treat release-at-zero as cancel-back-to-AIM. Current behavior is a loophole.
-3. **Audit striker-foul + queen interaction.** Determine correct carrom rules: if striker is pocketed on the same shot that pockets the queen, does the queen return to center? If so, `_handle_foul` needs to reset `queen_pocketed_by`.
-4. **Add `cancel_power()` to GameManager.** Replace the direct `_set_state` call in striker.gd:99 with a public method. Small change, prevents future state-transition bugs.
-5. **Gate debug prints behind a flag.** A `const DEBUG := true` check or Godot's `OS.is_debug_build()` wrapper. Low effort, cleans up release output.
+1. ~~**Fix simulation stop-detection.**~~ ✅ Done.
+2. ~~**Decide on zero-power behavior.**~~ ✅ Done — MIN_SIMULATION_TIME prevents exploit.
+3. ~~**Audit striker-foul + queen interaction.**~~ ✅ Done — queen state properly reset on foul.
+4. **Add `cancel_power()` to GameManager.** ⚠️ Still needed. Replace the direct `_set_state` call in striker.gd with a public method.
+5. **Gate debug prints behind a flag.** ⚠️ Still needed. `OS.is_debug_build()` wrapper or strip entirely.
+6. **Migrate from `piece.visible` to `is_in_play` metadata.** ⚠️ Architectural debt — fix when adding visual effects on pocketing.
+7. **Add collision check to `_return_piece_to_center`.** ⚠️ Minor — spreading formula works but no overlap detection.
 
 ### Coverage Gaps
 
 - **Monkey / Hostile Input** — What happens with extremely rapid clicks during state transitions? Could rapid left-click during SIMULATION skip ahead?
 - **Dragon / Temporal Analysis** — How does this architecture scale to online multiplayer? The autoload singleton pattern and frame-based polling would need significant rework.
-- **Rat / Feedback Loop** — What are the downstream effects of the physics revamp (noted in memory) on the stop-detection threshold? The 0.5 cm/s threshold may need recalibration.
+- ~~**Rat / Feedback Loop** — What are the downstream effects of the physics revamp on the stop-detection threshold?~~ ✅ Addressed — threshold recalibrated with consecutive-frame counter.
 
 ---
 

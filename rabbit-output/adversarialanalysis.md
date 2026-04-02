@@ -2,48 +2,50 @@
 
 Fresh review of the Carrom game loop, independent of prior Rabbit analysis.
 
+> **Status update (2026-03-31):** 3 of 3 CRITICAL issues resolved in commit `8a0e133`. Several HIGH/MEDIUM issues also resolved by aim redesign (`483f75f`). See status tags below.
+
 ---
 
 ## CRITICAL — Will corrupt games
 
-### 1. Single-frame stop detection
-**File:** `game_manager.gd:196-205`
+### 1. Single-frame stop detection ✅ FIXED
+**File:** `game_manager.gd` | **Fixed in:** commit `8a0e133`
 
-`_check_simulation_complete()` runs every `_process` frame and resolves the instant all velocities dip below 0.5. During wall/piece collisions, velocity passes through zero at the inflection point. One unlucky frame = premature turn resolution on incomplete physics. Board state gets permanently corrupted — pieces frozen mid-flight, wrong pocketing decisions.
+~~`_check_simulation_complete()` runs every `_process` frame and resolves the instant all velocities dip below 0.5.~~ Now uses `STOP_CONFIRM_FRAMES := 12` consecutive frames below threshold + `MIN_SIMULATION_TIME := 0.5` seconds. Moved to `_physics_process` for frame-accurate detection.
 
-### 2. Queen orphaning on striker foul
-**File:** `game_manager.gd:211-214`
+### 2. Queen orphaning on striker foul ✅ FIXED
+**File:** `game_manager.gd` | **Fixed in:** commit `8a0e133`
 
-If striker + queen are both pocketed on the same shot, `_resolve_turn` hits the `striker_pocketed` early return at line 214 and never reaches the queen coverage logic (line 216). `queen_pocketed_by` stays set to the fouling player but `_handle_foul` doesn't touch it. The opponent can never "cover" it because coverage only checks `current_player == queen_pocketed_by`. Queen is gone forever.
+~~`queen_pocketed_by` stays set to the fouling player but `_handle_foul` doesn't touch it.~~ Now resets `queen_pocketed_by = -1` when queen is not covered, preventing orphan state.
 
-### 3. Pocket re-entry / double-pocket
-**Files:** `board.gd:155-157`, `game_manager.gd:327-368`
+### 3. Pocket re-entry / double-pocket ✅ FIXED
+**Files:** `board.gd`, `game_manager.gd` | **Fixed in:** commit `8a0e133`
 
-`_on_pocket_body_entered` fires on Area3D overlap. A piece sliding along a pocket edge could trigger `body_entered` multiple times before it's teleported to `(0, -100, 0)`. There's no guard — `on_piece_pocketed` will run again, double-counting points, appending the piece to `pocketed_this_turn` twice, and potentially returning it twice on foul. The striker path has `striker_pocketed = true` which is idempotent, but the piece path adds points and appends unconditionally.
+~~No guard — `on_piece_pocketed` will run again, double-counting points.~~ Idempotency guard added: `if not body.visible: return` prevents re-processing already-pocketed pieces.
 
 ---
 
 ## HIGH — Exploitable or wrong behavior
 
-### 4. Zero-power shot = free pass
-**File:** `game_manager.gd:159-191`
+### 4. Zero-power shot = free pass ✅ FIXED
+**File:** `game_manager.gd` | **Fixed in:** commit `8a0e133`
 
-Click-release instantly in POWER state → `power = 0.0` → `speed = 0.0` → SIMULATION starts → next `_process` everything is already stopped → `_resolve_turn` fires. No pieces moved, no foul. `_switch_turn()` gives the opponent the turn. Player can intentionally "pass" with no penalty. Carrom has no passing.
+~~Click-release instantly in POWER state → instant resolve → free pass.~~ `MIN_SIMULATION_TIME := 0.5` prevents instant resolve even with `power = 0.0`.
 
-### 5. Striker not in `pieces` array
-**File:** `game_manager.gd:196-205`
+### 5. Striker not in `pieces` array — BY DESIGN
+**File:** `game_manager.gd`
 
-`_check_simulation_complete` iterates `pieces` then checks `striker` separately. But `pieces` is populated in `_spawn_pieces` and the striker is spawned via `_spawn_striker` — never added to `pieces`. This happens to work because of the separate striker check on line 202, but every other loop over `pieces` (logging, win check, HUD counts) silently excludes the striker. If any future code assumes `pieces` is "all rigid bodies on the board," it'll miss the striker.
+~~Concern about striker exclusion from `pieces` array.~~ **Assessed as intentional** — striker has different collision layer (4 vs 2), different mass (15g vs 5g), different lifecycle (never permanently pocketed). The separate handling is by design, not accident.
 
 ### 6. `_return_count` state leak across fouls
-**File:** `game_manager.gd:209, 257-268`
+**File:** `game_manager.gd` — ⚠️ **STILL OPEN** (low priority)
 
-`_return_count` is reset at the top of `_resolve_turn` (line 209). But `_handle_foul` also calls `_return_piece_to_center`, which increments it. If a future code path calls `_return_piece_to_center` outside `_resolve_turn`, the counter won't be reset, and pieces will spawn at increasingly large offsets.
+`_return_count` is reset at the top of `_resolve_turn`. If a future code path calls `_return_piece_to_center` outside `_resolve_turn`, the counter won't be reset. Latent risk.
 
 ### 7. Race between `_process` and pocket signals
-**File:** `game_manager.gd:67-79, 327`
+**File:** `game_manager.gd` — ⚠️ **STILL OPEN** (low priority)
 
-`on_piece_pocketed` modifies `pocketed_this_turn`, `striker_pocketed`, `own_piece_pocketed`, and scores. These are read by `_resolve_turn`, called from `_process`. If a piece enters a pocket on the same frame that stop detection triggers, the order matters: does `body_entered` fire before or after `_process`? In Godot, `body_entered` signals from physics fire during physics step, before `_process`. This should be safe — but if physics runs multiple sub-steps, a piece could be pocketed on a sub-step after the `_process` that called `_resolve_turn`. Edge case but not guarded.
+Stop detection now runs in `_physics_process` (not `_process`), which reduces but doesn't fully eliminate the race window. The consecutive-frame counter also makes this much harder to trigger in practice.
 
 ---
 
@@ -87,6 +89,13 @@ Blows away everything including the autoload singleton state. Works because `_re
 
 ---
 
-## Priority
+## Priority (Updated 2026-03-31)
 
-**Top 3 to fix first:** #1 (stop detection), #2 (queen orphan), #3 (double pocket). Everything else is annoying but survivable.
+~~**Top 3 to fix first:** #1 (stop detection), #2 (queen orphan), #3 (double pocket).~~ ✅ All 3 critical issues resolved.
+
+**Remaining open items (by priority):**
+1. #8 — Win condition requires queen pocketed by winner (wrong carrom rules)
+2. #9 — Score UX jumps during simulation (cosmetic)
+3. #6 — `_return_count` state leak (latent)
+4. #7 — Physics/process race (mitigated by frame counter)
+5. #10-15 — Low-priority / by-design items

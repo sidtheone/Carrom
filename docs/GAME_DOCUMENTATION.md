@@ -38,27 +38,28 @@
 ```
 godot/
 ├── project.godot                     # Engine config, autoloads, physics, input
-├── scenes/
-│   ├── main_menu.tscn                # Launch scene — Play / Settings / Quit
-│   ├── main.tscn                     # Game scene — board, camera, lights, HUD
-│   ├── hud.tscn                      # HUD overlay — scores, power bar, labels
-│   └── settings.tscn                 # Settings — audio toggle
-├── scripts/
+├── autoload/
 │   ├── game_manager.gd               # [Autoload] State machine, rules, scoring
-│   ├── audio_manager.gd              # [Autoload] Sound pool, collision audio
-│   ├── board.gd                      # Procedural board, pieces, pockets, walls
-│   ├── striker.gd                    # Mouse input, aim indicator
-│   ├── camera_controller.gd          # State-based camera presets + tweens
-│   ├── hud.gd                        # UI updates, foul display, game over panel
-│   ├── main_menu.gd                  # Menu button handlers
-│   └── settings.gd                   # Audio toggle handler
-├── assets/audio/
-│   ├── carrom_carrommen_cd.wav       # Piece-piece collision
-│   ├── Carrom_carrommen_wall.wav     # Piece-wall collision
-│   ├── carrom_striker_wall.wav       # Striker-wall collision
-│   ├── carrom_pot_sound.wav          # Pocket sound
-│   └── carrom_power_bar.wav          # Power charging loop
-└── resources/                        # (Reserved for future assets)
+│   └── audio_manager.gd              # [Autoload] Sound pool, collision audio
+├── scenes/
+│   ├── game/
+│   │   ├── main.tscn                 # Game scene — board, camera, lights, HUD
+│   │   ├── board.gd                  # Procedural board, pieces, pockets, walls
+│   │   ├── striker.gd                # Mouse input, aim indicator
+│   │   └── camera_controller.gd      # State-based camera presets + tweens
+│   └── ui/
+│       ├── main_menu.tscn            # Launch scene — Play / Settings / Quit
+│       ├── main_menu.gd              # Menu button handlers
+│       ├── hud.tscn                  # HUD overlay — scores, power bar, labels
+│       ├── hud.gd                    # UI updates, foul display, game over panel
+│       ├── settings.tscn             # Settings — audio toggle
+│       └── settings.gd               # Audio toggle handler
+└── assets/audio/
+    ├── carrom_carrommen_cd.wav       # Piece-piece collision
+    ├── Carrom_carrommen_wall.wav     # Piece-wall collision
+    ├── carrom_striker_wall.wav       # Striker-wall collision
+    ├── carrom_pot_sound.wav          # Pocket sound
+    └── carrom_power_bar.wav          # Power charging loop
 ```
 
 ---

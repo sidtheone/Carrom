@@ -32,17 +32,17 @@ and side effect is documented with file:line references matching the current cod
 The player clicked to confirm aim. This triggered:
 
 ```
-striker.gd:86   → event.pressed (mouse DOWN in AIM state)
-striker.gd:87   → GameManager.confirm_aim()
-game_manager.gd:120   power = 0.0
-game_manager.gd:121   is_charging = false          ← NOT charging yet
-game_manager.gd:122   _set_state(State.POWER)
-game_manager.gd:85      current_state = POWER
-game_manager.gd:86      state_changed.emit(POWER)
-                           ├─ camera_controller.gd:62  → tween to POWER camera preset
-                           ├─ hud.gd:59                → state_label text updates
-                           ├─ hud.gd:60                → placement_indicator hidden
-                           └─ striker.gd:37             → aim_indicator stays visible
+scenes/game/striker.gd:86   → event.pressed (mouse DOWN in AIM state)
+scenes/game/striker.gd:87   → GameManager.confirm_aim()
+autoload/game_manager.gd:120   power = 0.0
+autoload/game_manager.gd:121   is_charging = false          ← NOT charging yet
+autoload/game_manager.gd:122   _set_state(State.POWER)
+autoload/game_manager.gd:85      current_state = POWER
+autoload/game_manager.gd:86      state_changed.emit(POWER)
+                           ├─ scenes/game/camera_controller.gd:62  → tween to POWER camera preset
+                           ├─ scenes/ui/hud.gd:59                → state_label text updates
+                           ├─ scenes/ui/hud.gd:60                → placement_indicator hidden
+                           └─ scenes/game/striker.gd:37             → aim_indicator stays visible
 ```
 
 The mouse button from the aim-confirm click is still held down.
@@ -52,12 +52,12 @@ When the player releases it, `_handle_power` sees `not event.pressed` but
 ### Player clicks and holds (new click)
 
 ```
-striker.gd:91   → InputEventMouseButton received
-striker.gd:93   → button_index == MOUSE_BUTTON_LEFT ✓
-striker.gd:94   → event.pressed = true (mouse DOWN)
-striker.gd:96   → GameManager.is_charging = true       ← charging begins
-striker.gd:97   → AudioManager.play_power_bar()
-audio_manager.gd:78   → _power_bar_player.play()      ← looping charge sound starts
+scenes/game/striker.gd:91   → InputEventMouseButton received
+scenes/game/striker.gd:93   → button_index == MOUSE_BUTTON_LEFT ✓
+scenes/game/striker.gd:94   → event.pressed = true (mouse DOWN)
+scenes/game/striker.gd:96   → GameManager.is_charging = true       ← charging begins
+scenes/game/striker.gd:97   → AudioManager.play_power_bar()
+autoload/audio_manager.gd:78   → _power_bar_player.play()      ← looping charge sound starts
 ```
 
 ### Every frame while held (charging loop)
@@ -65,35 +65,35 @@ audio_manager.gd:78   → _power_bar_player.play()      ← looping charge sound
 Two `_process()` calls run each frame:
 
 ```
-game_manager.gd:63   _process(delta)
-game_manager.gd:67     match current_state → State.POWER
-game_manager.gd:69       is_charging == true
-game_manager.gd:70       power = minf(power + POWER_CHARGE_SPEED * delta, MAX_POWER)
+autoload/game_manager.gd:63   _process(delta)
+autoload/game_manager.gd:67     match current_state → State.POWER
+autoload/game_manager.gd:69       is_charging == true
+autoload/game_manager.gd:70       power = minf(power + POWER_CHARGE_SPEED * delta, MAX_POWER)
                           ← power += 3.0 * delta each frame, capped at 5.0
                           ← at 60fps: delta ≈ 0.0167, so +0.05/frame
                           ← 0 → 5.0 takes ~1.67 seconds
 
-hud.gd:50        _process(delta)
-hud.gd:51          current_state == POWER → true
-hud.gd:52          power_bar.value = (power / 5.0) * 100.0    ← bar fills 0→100%
-hud.gd:53          power_bar.visible = true
+scenes/ui/hud.gd:50        _process(delta)
+scenes/ui/hud.gd:51          current_state == POWER → true
+scenes/ui/hud.gd:52          power_bar.value = (power / 5.0) * 100.0    ← bar fills 0→100%
+scenes/ui/hud.gd:53          power_bar.visible = true
 ```
 
 ### State snapshot during charging
 
 | Variable | Value | Location |
 |----------|-------|----------|
-| `current_state` | `POWER` | game_manager.gd:33 |
-| `current_player` | `1` or `2` | game_manager.gd:34 |
-| `is_charging` | `true` | game_manager.gd:38 |
-| `power` | `0.0 → 5.0` (increasing) | game_manager.gd:37 |
-| `aim_angle` | `-75.0 to +75.0` (locked) | game_manager.gd:36 |
+| `current_state` | `POWER` | autoload/game_manager.gd:33 |
+| `current_player` | `1` or `2` | autoload/game_manager.gd:34 |
+| `is_charging` | `true` | autoload/game_manager.gd:38 |
+| `power` | `0.0 → 5.0` (increasing) | autoload/game_manager.gd:37 |
+| `aim_angle` | `-75.0 to +75.0` (locked) | autoload/game_manager.gd:36 |
 | `striker.freeze` | `true` | set in place_striker_at:100 |
 | `striker.linear_velocity` | `(0, 0, 0)` | frozen body can't move |
-| `striker.global_position` | P1: `(x, 0.02, +2.9)`, P2: `(x, 0.02, -2.9)` | game_manager.gd:97 |
-| `aim_indicator.visible` | `true` | striker.gd:38 |
-| `power_bar.visible` | `true` | hud.gd:53 |
-| Audio | `power_bar.wav` looping | audio_manager.gd:79 |
+| `striker.global_position` | P1: `(x, 0.02, +2.9)`, P2: `(x, 0.02, -2.9)` | autoload/game_manager.gd:97 |
+| `aim_indicator.visible` | `true` | scenes/game/striker.gd:38 |
+| `power_bar.visible` | `true` | scenes/ui/hud.gd:53 |
+| Audio | `power_bar.wav` looping | autoload/audio_manager.gd:79 |
 
 ---
 
@@ -105,46 +105,46 @@ with `pressed = false` through `_unhandled_input`.
 ### Step 1: Input captured by striker
 
 ```
-striker.gd:43   _unhandled_input(event)
-striker.gd:44     GameManager.game_active == true → continue
-striker.gd:47     match GameManager.current_state → State.POWER
-striker.gd:53       → _handle_power(event)
-striker.gd:91         event is InputEventMouseButton ✓
-striker.gd:93         event.button_index == MOUSE_BUTTON_LEFT ✓
-striker.gd:98         event.pressed == false (mouse UP)
-striker.gd:100          GameManager.is_charging == true ✓
-striker.gd:101          → GameManager.release_power()
+scenes/game/striker.gd:43   _unhandled_input(event)
+scenes/game/striker.gd:44     GameManager.game_active == true → continue
+scenes/game/striker.gd:47     match GameManager.current_state → State.POWER
+scenes/game/striker.gd:53       → _handle_power(event)
+scenes/game/striker.gd:91         event is InputEventMouseButton ✓
+scenes/game/striker.gd:93         event.button_index == MOUSE_BUTTON_LEFT ✓
+scenes/game/striker.gd:98         event.pressed == false (mouse UP)
+scenes/game/striker.gd:100          GameManager.is_charging == true ✓
+scenes/game/striker.gd:101          → GameManager.release_power()
 ```
 
 ### Step 2: Stop charging, stop audio
 
 ```
-game_manager.gd:128  release_power()
-game_manager.gd:129    current_state == POWER ✓ (guard passes)
-game_manager.gd:131    is_charging = false                ← charging stops
-game_manager.gd:132    AudioManager.stop_power_bar()
-audio_manager.gd:84      _power_bar_player.stop()         ← sound stops instantly
-game_manager.gd:133    → _shoot_striker()                  ← fire!
+autoload/game_manager.gd:128  release_power()
+autoload/game_manager.gd:129    current_state == POWER ✓ (guard passes)
+autoload/game_manager.gd:131    is_charging = false                ← charging stops
+autoload/game_manager.gd:132    AudioManager.stop_power_bar()
+autoload/audio_manager.gd:84      _power_bar_player.stop()         ← sound stops instantly
+autoload/game_manager.gd:133    → _shoot_striker()                  ← fire!
 ```
 
 ### Step 3: Unfreeze striker and compute impulse
 
 ```
-game_manager.gd:136  _shoot_striker()
-game_manager.gd:137    striker == null? → no, continue
-game_manager.gd:139    striker.freeze = false               ← physics enabled on striker
+autoload/game_manager.gd:136  _shoot_striker()
+autoload/game_manager.gd:137    striker == null? → no, continue
+autoload/game_manager.gd:139    striker.freeze = false               ← physics enabled on striker
 ```
 
 **Direction computation:**
 
 ```
-game_manager.gd:141    angle_rad = deg_to_rad(aim_angle)
+autoload/game_manager.gd:141    angle_rad = deg_to_rad(aim_angle)
 
-game_manager.gd:142    direction = Vector3(sin(angle_rad), 0.0, -cos(angle_rad))
+autoload/game_manager.gd:142    direction = Vector3(sin(angle_rad), 0.0, -cos(angle_rad))
                         ← P1: negative Z component = shoots toward -Z (toward center)
 
-game_manager.gd:143    if current_player == 2:
-game_manager.gd:144      direction.z = -direction.z         ← P2: flip to shoot toward +Z
+autoload/game_manager.gd:143    if current_player == 2:
+autoload/game_manager.gd:144      direction.z = -direction.z         ← P2: flip to shoot toward +Z
 ```
 
 **Direction by player (angle = 0° straight shot):**
@@ -167,16 +167,16 @@ Angle = -75°:  direction = (-0.97, 0, -0.26)  → hard left
 **Impulse application:**
 
 ```
-game_manager.gd:145    impulse = direction * power * 2.0    ← scale factor for feel
+autoload/game_manager.gd:145    impulse = direction * power * 2.0    ← scale factor for feel
 
                         Example: power = 3.5, angle = 0° (P1)
                           impulse = (0, 0, -1) * 3.5 * 2.0
                                   = (0, 0, -7.0)
 
-game_manager.gd:146    striker.apply_central_impulse(impulse)
+autoload/game_manager.gd:146    striker.apply_central_impulse(impulse)
                         ← Godot physics: impulse is instantaneous force
                            velocity += impulse / mass
-                           mass = 18.0 (STRIKER_MASS from board.gd:14)
+                           mass = 18.0 (STRIKER_MASS from scenes/game/board.gd:14)
                            initial velocity = (0, 0, -7.0) / 18.0
                                             = (0, 0, -0.389) m/s
 ```
@@ -193,44 +193,44 @@ game_manager.gd:146    striker.apply_central_impulse(impulse)
 ### Step 4: Reset turn-tracking flags
 
 ```
-game_manager.gd:148    pocketed_this_turn.clear()         ← empty the array
-game_manager.gd:149    striker_pocketed = false            ← no foul yet
-game_manager.gd:150    own_piece_pocketed = false          ← no extra turn yet
+autoload/game_manager.gd:148    pocketed_this_turn.clear()         ← empty the array
+autoload/game_manager.gd:149    striker_pocketed = false            ← no foul yet
+autoload/game_manager.gd:150    own_piece_pocketed = false          ← no extra turn yet
 ```
 
 ### Step 5: Transition to SIMULATION
 
 ```
-game_manager.gd:151    _set_state(State.SIMULATION)
-game_manager.gd:85       current_state = SIMULATION
-game_manager.gd:86       state_changed.emit(SIMULATION)
+autoload/game_manager.gd:151    _set_state(State.SIMULATION)
+autoload/game_manager.gd:85       current_state = SIMULATION
+autoload/game_manager.gd:86       state_changed.emit(SIMULATION)
 ```
 
 **All signal receivers fire synchronously:**
 
 ```
-camera_controller.gd:62   _on_state_changed(SIMULATION)
-camera_controller.gd:63     _transition_to(SIMULATION, current_player)
+scenes/game/camera_controller.gd:62   _on_state_changed(SIMULATION)
+scenes/game/camera_controller.gd:63     _transition_to(SIMULATION, current_player)
                              ← P1: tween to pos(0, 7.0, 2.0), rot(-70°, 0°, 0°)
                              ← P2: tween to pos(0, 7.0, -2.0), rot(-70°, 180°, 0°)
                              ← 0.5s cubic ease-in-out transition
 
-hud.gd:59                _on_state_changed(SIMULATION)
-hud.gd:60                  state_label.text = "Simulating..."
-hud.gd:61                  placement_indicator.visible = false
-hud.gd:62                  _update_queen_status()    ← refresh queen label
+scenes/ui/hud.gd:59                _on_state_changed(SIMULATION)
+scenes/ui/hud.gd:60                  state_label.text = "Simulating..."
+scenes/ui/hud.gd:61                  placement_indicator.visible = false
+scenes/ui/hud.gd:62                  _update_queen_status()    ← refresh queen label
 
-striker.gd:33             _on_state_changed(SIMULATION)
-striker.gd:40               _aim_indicator.visible = false   ← cone disappears
+scenes/game/striker.gd:33             _on_state_changed(SIMULATION)
+scenes/game/striker.gd:40               _aim_indicator.visible = false   ← cone disappears
 ```
 
 **On next frame:**
 
 ```
-hud.gd:50                _process(delta)
-hud.gd:51                  current_state == POWER? → false (now SIMULATION)
-hud.gd:54                  power_bar.visible = false         ← bar hides
-hud.gd:55                  power_bar.value = 0
+scenes/ui/hud.gd:50                _process(delta)
+scenes/ui/hud.gd:51                  current_state == POWER? → false (now SIMULATION)
+scenes/ui/hud.gd:54                  power_bar.visible = false         ← bar hides
+scenes/ui/hud.gd:55                  power_bar.value = 0
 ```
 
 ---
@@ -317,9 +317,9 @@ Each piece has this connected at creation time:
 **Signal wiring (during board setup):**
 
 ```
-board.gd:356    body.contact_monitor = true       ← enable collision signals
-board.gd:357    body.max_contacts_reported = 4    ← track up to 4 contacts
-board.gd:358    body.body_entered.connect(_on_piece_collision.bind(body))
+scenes/game/board.gd:356    body.contact_monitor = true       ← enable collision signals
+scenes/game/board.gd:357    body.max_contacts_reported = 4    ← track up to 4 contacts
+scenes/game/board.gd:358    body.body_entered.connect(_on_piece_collision.bind(body))
                 ← .bind(body) passes the owner piece as second argument
                 ← Godot's body_entered passes the OTHER body as first argument
                 ← callback signature: _on_piece_collision(other, piece)
@@ -328,44 +328,44 @@ board.gd:358    body.body_entered.connect(_on_piece_collision.bind(body))
 **When a collision occurs:**
 
 ```
-board.gd:363  _on_piece_collision(other: Node, piece: RigidBody3D)
-board.gd:364    vel = piece.linear_velocity.length()
-board.gd:365    vel < 0.05? → return (skip inaudible collisions)
+scenes/game/board.gd:363  _on_piece_collision(other: Node, piece: RigidBody3D)
+scenes/game/board.gd:364    vel = piece.linear_velocity.length()
+scenes/game/board.gd:365    vel < 0.05? → return (skip inaudible collisions)
 ```
 
 **Branch: Wall collision (other is StaticBody3D)**
 
 ```
-board.gd:368    other is StaticBody3D? → YES (wall or board surface)
-board.gd:370      piece == GameManager.striker?
-board.gd:371        YES → AudioManager.play_collision_sound(STRIKER_WALL, vel)
+scenes/game/board.gd:368    other is StaticBody3D? → YES (wall or board surface)
+scenes/game/board.gd:370      piece == GameManager.striker?
+scenes/game/board.gd:371        YES → AudioManager.play_collision_sound(STRIKER_WALL, vel)
                            ← distinct heavy thud for striker hitting wall
-board.gd:373        NO  → AudioManager.play_collision_sound(PIECE_WALL, vel)
+scenes/game/board.gd:373        NO  → AudioManager.play_collision_sound(PIECE_WALL, vel)
                            ← lighter bounce sound for piece hitting wall
 ```
 
 **Branch: Piece-piece collision (other is RigidBody3D)**
 
 ```
-board.gd:374    other is RigidBody3D? → YES
-board.gd:376      piece.get_instance_id() < other.get_instance_id()?
+scenes/game/board.gd:374    other is RigidBody3D? → YES
+scenes/game/board.gd:376      piece.get_instance_id() < other.get_instance_id()?
                   ← BOTH pieces fire body_entered for the same collision
                   ← this comparison ensures only ONE of them plays sound
                   ← the piece with the lower instance ID wins
-board.gd:377        → AudioManager.play_collision_sound(PIECE_COLLISION, vel)
+scenes/game/board.gd:377        → AudioManager.play_collision_sound(PIECE_COLLISION, vel)
 ```
 
 **Volume computation in AudioManager:**
 
 ```
-audio_manager.gd:69   play_collision_sound(sfx, velocity)
-audio_manager.gd:71     gain = DEFAULT_GAINS[sfx]
+autoload/audio_manager.gd:69   play_collision_sound(sfx, velocity)
+autoload/audio_manager.gd:71     gain = DEFAULT_GAINS[sfx]
                          ← PIECE_COLLISION: 0.3
                          ← STRIKER_WALL:    0.7
                          ← PIECE_WALL:      0.4
 
-audio_manager.gd:72     velocity > 0.01? (almost always true)
-audio_manager.gd:73       gain = clampf(gain * velocity * 0.5, 0.1, 1.0)
+autoload/audio_manager.gd:72     velocity > 0.01? (almost always true)
+autoload/audio_manager.gd:73       gain = clampf(gain * velocity * 0.5, 0.1, 1.0)
                           ← scales the default gain by velocity
                           ← faster collision = louder sound
                           ← clamped to [0.1, 1.0] range
@@ -381,24 +381,24 @@ audio_manager.gd:73       gain = clampf(gain * velocity * 0.5, 0.1, 1.0)
                             vel=1.0:  0.7 * 1.0 * 0.5 = 0.35
                             vel=3.0:  0.7 * 3.0 * 0.5 = 1.05  → clamped to 1.0
 
-audio_manager.gd:74     play_sound(sfx, gain)
+autoload/audio_manager.gd:74     play_sound(sfx, gain)
 ```
 
 **Sound playback from pool:**
 
 ```
-audio_manager.gd:52   play_sound(sfx, volume)
-audio_manager.gd:53     _streams.has(sfx)? ✓
-audio_manager.gd:55     gain = volume (explicit override from play_collision_sound)
-audio_manager.gd:57     for player in _players[0..7]:    ← pool of 8
-audio_manager.gd:58       if not player.playing:          ← find idle player
-audio_manager.gd:59         player.stream = _streams[sfx]
-audio_manager.gd:60         player.volume_db = linear_to_db(gain)
-audio_manager.gd:61         player.play()                 ← sound fires
-audio_manager.gd:62         return
-audio_manager.gd:64     _players[0].stream = ...          ← all 8 busy? interrupt first
-audio_manager.gd:65     _players[0].volume_db = ...
-audio_manager.gd:66     _players[0].play()                ← oldest sound cut off
+autoload/audio_manager.gd:52   play_sound(sfx, volume)
+autoload/audio_manager.gd:53     _streams.has(sfx)? ✓
+autoload/audio_manager.gd:55     gain = volume (explicit override from play_collision_sound)
+autoload/audio_manager.gd:57     for player in _players[0..7]:    ← pool of 8
+autoload/audio_manager.gd:58       if not player.playing:          ← find idle player
+autoload/audio_manager.gd:59         player.stream = _streams[sfx]
+autoload/audio_manager.gd:60         player.volume_db = linear_to_db(gain)
+autoload/audio_manager.gd:61         player.play()                 ← sound fires
+autoload/audio_manager.gd:62         return
+autoload/audio_manager.gd:64     _players[0].stream = ...          ← all 8 busy? interrupt first
+autoload/audio_manager.gd:65     _players[0].volume_db = ...
+autoload/audio_manager.gd:66     _players[0].play()                ← oldest sound cut off
 ```
 
 **Concurrent sound limit:**
@@ -419,16 +419,16 @@ via a SphereShape3D trigger (radius 0.28 units).
 **Pocket positions:**
 
 ```
-board.gd:114    half = 3.7 (BOARD_SIZE/2 * S)
-board.gd:115    offset = half * 0.95 = 3.515
-board.gd:116-120  corners:
+scenes/game/board.gd:114    half = 3.7 (BOARD_SIZE/2 * S)
+scenes/game/board.gd:115    offset = half * 0.95 = 3.515
+scenes/game/board.gd:116-120  corners:
                     Pocket_0: (-3.515, 0, -3.515)  ← top-left
                     Pocket_1: (+3.515, 0, -3.515)  ← top-right
                     Pocket_2: (-3.515, 0, +3.515)  ← bottom-left
                     Pocket_3: (+3.515, 0, +3.515)  ← bottom-right
 
-board.gd:145    area.collision_layer = 8   ← pocket layer (bit 3)
-board.gd:146    area.collision_mask  = 6   ← detects pieces (bit 1) + striker (bit 2)
+scenes/game/board.gd:145    area.collision_layer = 8   ← pocket layer (bit 3)
+scenes/game/board.gd:146    area.collision_mask  = 6   ← detects pieces (bit 1) + striker (bit 2)
                 ← mask=6 in binary = 0b110 = layers 2 and 3
                 ← pieces on layer 2 (value 2): 2 & 6 = 2 ✓
                 ← striker on layer 3 (value 4): 4 & 6 = 4 ✓
@@ -437,64 +437,64 @@ board.gd:146    area.collision_mask  = 6   ← detects pieces (bit 1) + striker 
 **When a body enters a pocket sphere:**
 
 ```
-board.gd:147    area.body_entered.connect(_on_pocket_body_entered)
+scenes/game/board.gd:147    area.body_entered.connect(_on_pocket_body_entered)
                 ← Godot fires this when a RigidBody3D overlaps the SphereShape3D
 
-board.gd:152  _on_pocket_body_entered(body: Node3D)
-board.gd:153    body is RigidBody3D? ✓
-board.gd:154    → GameManager.on_piece_pocketed(body)
+scenes/game/board.gd:152  _on_pocket_body_entered(body: Node3D)
+scenes/game/board.gd:153    body is RigidBody3D? ✓
+scenes/game/board.gd:154    → GameManager.on_piece_pocketed(body)
 ```
 
 **Pocket handler — striker case:**
 
 ```
-game_manager.gd:298  on_piece_pocketed(body)
-game_manager.gd:299    game_active == true ✓
-game_manager.gd:302    AudioManager.play_sound(POT, 0.7)     ← pocket sound plays
+autoload/game_manager.gd:298  on_piece_pocketed(body)
+autoload/game_manager.gd:299    game_active == true ✓
+autoload/game_manager.gd:302    AudioManager.play_sound(POT, 0.7)     ← pocket sound plays
 
-game_manager.gd:304    body == striker?  → YES
-game_manager.gd:305      striker_pocketed = true              ← foul flag
-game_manager.gd:306      body.linear_velocity = Vector3.ZERO ← stop movement
-game_manager.gd:307      body.angular_velocity = Vector3.ZERO
-game_manager.gd:308      body.freeze = true                  ← disable physics
-game_manager.gd:309      body.visible = false                ← hide from view
-game_manager.gd:310      body.global_position = (0, -10, 0) ← teleport off-board
-game_manager.gd:311      return
+autoload/game_manager.gd:304    body == striker?  → YES
+autoload/game_manager.gd:305      striker_pocketed = true              ← foul flag
+autoload/game_manager.gd:306      body.linear_velocity = Vector3.ZERO ← stop movement
+autoload/game_manager.gd:307      body.angular_velocity = Vector3.ZERO
+autoload/game_manager.gd:308      body.freeze = true                  ← disable physics
+autoload/game_manager.gd:309      body.visible = false                ← hide from view
+autoload/game_manager.gd:310      body.global_position = (0, -10, 0) ← teleport off-board
+autoload/game_manager.gd:311      return
                           ← striker is gone, foul will be processed in _resolve_turn
 ```
 
 **Pocket handler — piece case:**
 
 ```
-game_manager.gd:313    body.visible = false                   ← piece disappears
-game_manager.gd:314    body.freeze = true                     ← stop its physics
-game_manager.gd:315    body.global_position = (0, -10, 0)    ← move underground
-game_manager.gd:316    pocketed_this_turn.append(body)        ← remember for resolution
+autoload/game_manager.gd:313    body.visible = false                   ← piece disappears
+autoload/game_manager.gd:314    body.freeze = true                     ← stop its physics
+autoload/game_manager.gd:315    body.global_position = (0, -10, 0)    ← move underground
+autoload/game_manager.gd:316    pocketed_this_turn.append(body)        ← remember for resolution
 
-game_manager.gd:318    piece_color = body.get_meta("color")   ← BLACK(0), WHITE(1), RED(2)
+autoload/game_manager.gd:318    piece_color = body.get_meta("color")   ← BLACK(0), WHITE(1), RED(2)
 
-game_manager.gd:321    Scoring by color:
+autoload/game_manager.gd:321    Scoring by color:
                           BLACK → points = 10  (SCORE_BLACK)
                           WHITE → points = 20  (SCORE_WHITE)
                           RED   → points = 50  (SCORE_QUEEN)
 
-game_manager.gd:330    scores[current_player - 1] += points   ← add to player's score
-game_manager.gd:331    score_updated.emit(current_player, scores[...])
-                        └─ hud.gd:66 _on_score_updated → _update_scores()
+autoload/game_manager.gd:330    scores[current_player - 1] += points   ← add to player's score
+autoload/game_manager.gd:331    score_updated.emit(current_player, scores[...])
+                        └─ scenes/ui/hud.gd:66 _on_score_updated → _update_scores()
                            ← score labels refresh
 
-game_manager.gd:332    piece_pocketed.emit(body, current_player)
-                        └─ hud.gd:68 _on_piece_pocketed
+autoload/game_manager.gd:332    piece_pocketed.emit(body, current_player)
+                        └─ scenes/ui/hud.gd:68 _on_piece_pocketed
                            ├─ _update_piece_counts()   ← "P1 left: 8"
                            └─ _update_queen_status()   ← "Queen: Needs Cover"
 
-game_manager.gd:334    Own piece tracking:
-game_manager.gd:335      P1 pocketed BLACK? → own_piece_pocketed = true
-game_manager.gd:336      P2 pocketed WHITE? → own_piece_pocketed = true
+autoload/game_manager.gd:334    Own piece tracking:
+autoload/game_manager.gd:335      P1 pocketed BLACK? → own_piece_pocketed = true
+autoload/game_manager.gd:336      P2 pocketed WHITE? → own_piece_pocketed = true
                           ← earns extra turn in _resolve_turn
 
-game_manager.gd:340    Queen tracking:
-game_manager.gd:341      piece_color == RED?
+autoload/game_manager.gd:340    Queen tracking:
+autoload/game_manager.gd:341      piece_color == RED?
                             queen_pocketed_by = current_player
                             queen_covered = false
                           ← queen must be "covered" next shot or returns to center
@@ -507,28 +507,28 @@ game_manager.gd:341      piece_color == RED?
 During SIMULATION, `_process()` runs `_check_simulation_complete()` every frame.
 
 ```
-game_manager.gd:63   _process(delta)
-game_manager.gd:64     game_active == false? → return (skip if game over)
-game_manager.gd:67     match current_state:
-game_manager.gd:71       State.SIMULATION → _check_simulation_complete()
+autoload/game_manager.gd:63   _process(delta)
+autoload/game_manager.gd:64     game_active == false? → return (skip if game over)
+autoload/game_manager.gd:67     match current_state:
+autoload/game_manager.gd:71       State.SIMULATION → _check_simulation_complete()
 ```
 
 **The stop check:**
 
 ```
-game_manager.gd:156  _check_simulation_complete()
-game_manager.gd:157    striker == null? → return (safety guard)
+autoload/game_manager.gd:156  _check_simulation_complete()
+autoload/game_manager.gd:157    striker == null? → return (safety guard)
 
-game_manager.gd:160    for piece in pieces[]:               ← all 19 pieces
-game_manager.gd:161      if piece.visible:                  ← skip pocketed (invisible)
+autoload/game_manager.gd:160    for piece in pieces[]:               ← all 19 pieces
+autoload/game_manager.gd:161      if piece.visible:                  ← skip pocketed (invisible)
                            if piece.linear_velocity.length() > STOP_THRESHOLD:
-game_manager.gd:162          return                         ← at least one still moving
+autoload/game_manager.gd:162          return                         ← at least one still moving
                                                                check again next frame
 
-game_manager.gd:163    if striker.linear_velocity.length() > STOP_THRESHOLD:
-game_manager.gd:164      return                             ← striker still moving
+autoload/game_manager.gd:163    if striker.linear_velocity.length() > STOP_THRESHOLD:
+autoload/game_manager.gd:164      return                             ← striker still moving
 
-game_manager.gd:166    → _resolve_turn()                    ← ALL bodies below 0.005 m/s
+autoload/game_manager.gd:166    → _resolve_turn()                    ← ALL bodies below 0.005 m/s
 ```
 
 **STOP_THRESHOLD = 0.005 m/s**
@@ -543,7 +543,7 @@ game_manager.gd:166    → _resolve_turn()                    ← ALL bodies bel
 **Pocketed pieces are skipped:**
 
 ```
-← piece.visible = false after pocketing (game_manager.gd:313)
+← piece.visible = false after pocketing (autoload/game_manager.gd:313)
 ← the check on line 161 requires piece.visible
 ← pocketed pieces don't block simulation end
 ```
@@ -551,13 +551,13 @@ game_manager.gd:166    → _resolve_turn()                    ← ALL bodies bel
 **Pocketed striker is also handled:**
 
 ```
-← striker is hidden + frozen after pocketing (game_manager.gd:308-310)
-← striker.linear_velocity is zeroed (game_manager.gd:306)
+← striker is hidden + frozen after pocketing (autoload/game_manager.gd:308-310)
+← striker.linear_velocity is zeroed (autoload/game_manager.gd:306)
 ← so line 163 check passes immediately (0 < 0.005 is false → doesn't return)
 ← simulation can still end while striker is "in pocket"
 ```
 
-**can_sleep = false on all bodies (board.gd:312):**
+**can_sleep = false on all bodies (scenes/game/board.gd:312):**
 
 ```
 ← Godot's sleep optimization would stop tracking velocity on slow bodies
@@ -573,18 +573,18 @@ Once all pieces stop, `_resolve_turn()` runs exactly once (because it
 immediately changes state away from SIMULATION, preventing re-entry).
 
 ```
-game_manager.gd:169  _resolve_turn()
-game_manager.gd:170    _return_count = 0    ← reset ring placement counter
+autoload/game_manager.gd:169  _resolve_turn()
+autoload/game_manager.gd:170    _return_count = 0    ← reset ring placement counter
 ```
 
 **Check 1: Striker Foul**
 
 ```
-game_manager.gd:172    striker_pocketed?
+autoload/game_manager.gd:172    striker_pocketed?
                         │
                         ├─ YES:
                         │   :173  foul_committed.emit(current_player, "Striker pocketed!")
-                        │           └─ hud.gd:76  FoulLabel appears in red
+                        │           └─ scenes/ui/hud.gd:76  FoulLabel appears in red
                         │                          tween: 1.5s visible → 0.5s fade → hide
                         │
                         │   :174  _handle_foul()
@@ -621,7 +621,7 @@ game_manager.gd:172    striker_pocketed?
 **Check 2: Queen Cover**
 
 ```
-game_manager.gd:178    queen_pocketed_by == current_player AND NOT queen_covered?
+autoload/game_manager.gd:178    queen_pocketed_by == current_player AND NOT queen_covered?
                         │
                         ├─ YES:
                         │   :179  own_piece_pocketed?
@@ -647,7 +647,7 @@ game_manager.gd:178    queen_pocketed_by == current_player AND NOT queen_covered
 **Check 3: Return Opponent Pieces**
 
 ```
-game_manager.gd:190    _return_opponent_pieces()
+autoload/game_manager.gd:190    _return_opponent_pieces()
                         :241  opponent_color = WHITE if P1 else BLACK
                         :242  for piece in pocketed_this_turn[]:
                         :243    piece.color == opponent_color?
@@ -664,7 +664,7 @@ game_manager.gd:190    _return_opponent_pieces()
 **Check 4: Win Condition**
 
 ```
-game_manager.gd:193    _check_win()
+autoload/game_manager.gd:193    _check_win()
                         :268  black_remaining = 0
                         :269  white_remaining = 0
                         :270  for piece in pieces[]:
@@ -680,7 +680,7 @@ game_manager.gd:193    _check_win()
                               → _end_game(1)
                                 :292  game_active = false
                                 :293  game_over.emit(1)
-                                        └─ hud.gd:85  GameOverPanel visible
+                                        └─ scenes/ui/hud.gd:85  GameOverPanel visible
                                                        "Player 1 Wins!"
                                                        RestartButton + MenuButton
                               → return 1   (truthy → _resolve_turn returns)
@@ -697,7 +697,7 @@ game_manager.gd:193    _check_win()
 **Check 5: Extra Turn or Switch**
 
 ```
-game_manager.gd:197    own_piece_pocketed?
+autoload/game_manager.gd:197    own_piece_pocketed?
                         │
                         ├─ YES:
                         │   :198  _set_state(State.PLACE_STRIKER)
@@ -709,7 +709,7 @@ game_manager.gd:197    own_piece_pocketed?
                             :200  _switch_turn()
                                     :252  current_player = 2 if 1 else 1
                                     :253  turn_changed.emit(current_player)
-                                           └─ hud.gd:63 → _update_turn()
+                                           └─ scenes/ui/hud.gd:63 → _update_turn()
                                                            "Player 2 (White)"
                                     :254  _set_state(State.PLACE_STRIKER)
                                            └─ state_changed.emit()

@@ -6,19 +6,17 @@
 
 ---
 
+> **Status update (2026-03-31):** ✅ **IMPLEMENTED** in commit `483f75f`. Raycast aim system shipped with dotted line + sphere collisions. The backward aim guard and placement refactor were both included. This analysis is now historical context.
+
 ## Synthesis
 
-The core approach is right — raycast eliminates the P1/P2 flip mess completely, and matching pool game UX is the correct call. One gap will break gameplay if not addressed.
+The core approach is right — raycast eliminates the P1/P2 flip mess completely, and matching pool game UX is the correct call. ~~One gap will break gameplay if not addressed.~~
 
-**The plan says raycast "naturally limits to forward hemisphere." It doesn't.** When the mouse is between the striker and the player's own wall, the raycast produces a valid Y=0 hit point — but the direction vector points BACKWARD. In real carrom you can't shoot toward your own side. The current system prevents this with `MAX_AIM_ANGLE = 75°`. The plan removes that constant and adds no replacement guard.
+~~**The plan says raycast "naturally limits to forward hemisphere." It doesn't.**~~ ✅ **ADDRESSED** — The implemented aim system uses raycast point-to-aim with sphere collisions, and the P1/P2 direction flip logic was fully eliminated (3 locations → 0).
 
-Fix: after computing direction, check that it points toward the opponent's side. Simplest: `if dir.z > 0: return` for P1, `if dir.z < 0: return` for P2. But that reintroduces P1/P2 logic. Better: compute the "forward" vector from the striker's baseline position (`forward.z = -sign(striker.global_position.z)`) and reject aim directions where `dir.dot(forward) < 0`. One line, no player check.
+~~**Placement refactor is optional scope.**~~ ✅ **SHIPPED** — Bundled with aim redesign as planned.
 
-Everything else in the plan is sound. Two minor notes:
-
-**Placement refactor is optional scope.** The plan bundles aim + placement into one change. Placement currently works (with known aspect-ratio issues) and doesn't share the P2 bugs that motivated this redesign. Splitting it out reduces blast radius. But if you want to ship it together, the raycast technique is identical for both — no extra complexity, just more surface area to test.
-
-**12 sphere MeshInstance3Ds work fine** but are heavier than needed. A single `ImmediateMesh` drawing a dashed line is 1 node instead of 12. Either works at this scale — the spheres are more readable code, the ImmediateMesh is cleaner scene tree.
+**12 sphere MeshInstance3Ds work fine** — this approach was used in the implementation. Readable code, acceptable at this scale.
 
 ### Findings Summary
 
@@ -54,11 +52,9 @@ Everything else in the plan is sound. Two minor notes:
 
 ### Action Items
 
-1. **Add forward-hemisphere guard.** After computing aim direction from raycast, reject directions that point toward the player's own side. `dir.dot(forward) < 0` where `forward = Vector3(0, 0, -sign(striker.z))`. This replaces `MAX_AIM_ANGLE` with a spatial check. Without this, backward shots are possible.
-
-2. **Decide whether to bundle placement refactor.** The aim redesign works independently. Placement raycast fixes the aspect-ratio bug but increases test surface. Ship together or split?
-
-3. **Decide dot visual approach.** 12 spheres (readable, more nodes) vs ImmediateMesh (1 node, slightly more complex code). No wrong answer at this scale.
+1. ~~**Add forward-hemisphere guard.**~~ ✅ Done — implemented in commit `483f75f`.
+2. ~~**Decide whether to bundle placement refactor.**~~ ✅ Done — shipped together.
+3. ~~**Decide dot visual approach.**~~ ✅ Done — 12 spheres approach used.
 
 ### Coverage Gaps
 

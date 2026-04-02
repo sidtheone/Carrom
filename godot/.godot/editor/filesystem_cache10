@@ -1,5 +1,5 @@
 63f7b34db8d8cdea90c76aacccf841ec
-::res://::1774820997
+::res://::1774822170
 ::res://assets/::1772323162
 ::res://assets/audio/::1772323641
 carrom_carrommen_cd.wav::AudioStreamWAV::4827559469927205974::1772323166::1772323641::1::::<><><>0<>0<>571da0c8e90485a1566a7ce422ca8940<>res://.godot/imported/carrom_carrommen_cd.wav-f2f4dde62aff5cd504dd811a49d59dc5.sample::
@@ -13,12 +13,12 @@ hud.tscn::PackedScene::-1::1774739854::0::1::::<><><>0<>0<><>::res://scripts/hud
 main.tscn::PackedScene::-1::1772323422::0::1::::<><><>0<>0<><>::res://scripts/board.gd<>res://scripts/camera_controller.gd<>res://scenes/hud.tscn
 main_menu.tscn::PackedScene::-1::1774739978::0::1::::<><><>0<>0<><>::res://scripts/main_menu.gd
 settings.tscn::PackedScene::-1::1774739964::0::1::::<><><>0<>0<><>::res://scripts/settings.gd
-::res://scripts/::1774740096
+::res://scripts/::1774822088
 audio_manager.gd::GDScript::5798990631210027017::1774740096::0::1::::<>Node<><>0<>0<><>::
 board.gd::GDScript::4182900348828076197::1774739952::0::1::::<>Node3D<><>0<>0<><>::
 camera_controller.gd::GDScript::6378185820645442342::1772323811::0::1::::<>Camera3D<><>0<>0<><>::
-game_manager.gd::GDScript::4565809988524790690::1774740091::0::1::::<>Node<><>0<>0<><>::
-hud.gd::GDScript::6295810409963612150::1774739876::0::1::::<>CanvasLayer<><>0<>0<><>::
+game_manager.gd::GDScript::4565809988524790690::1774822069::0::1::::<>Node<><>0<>0<><>::
+hud.gd::GDScript::6295810409963612150::1774822088::0::1::::<>CanvasLayer<><>0<>0<><>::
 main_menu.gd::GDScript::7312363698176721634::1774739970::0::1::::<>Control<><>0<>0<><>::
 settings.gd::GDScript::6501353047125033766::1774739956::0::1::::<>Control<><>0<>0<><>::
-striker.gd::GDScript::2895030690886209916::1774739927::0::1::::<>RigidBody3D<><>0<>0<><>::
+striker.gd::GDScript::2895030690886209916::1774822084::0::1::::<>RigidBody3D<><>0<>0<><>::

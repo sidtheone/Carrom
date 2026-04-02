@@ -6,6 +6,8 @@
 
 ---
 
+> **Status update (2026-03-31):** The 3 bugs this audit identified as missed by Rabbit have all been fixed in the codebase (commits `8a0e133`, `483f75f`). The framework recommendations below remain valid for improving future Rabbit runs.
+
 ## Synthesis
 
 The adversarial review found 3 bugs that Rabbit's prior game loop analysis missed. Two of those misses point to structural gaps in how the animals are defined. The third is an execution gap in an existing animal.

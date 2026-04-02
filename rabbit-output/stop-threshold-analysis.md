@@ -6,6 +6,8 @@
 
 ---
 
+> **Status update (2026-03-31):** ✅ **ALL ACTION ITEMS RESOLVED.** Commit `8a0e133` added both recommended fixes: consecutive-frame counter (`STOP_CONFIRM_FRAMES := 12`) and minimum simulation time (`MIN_SIMULATION_TIME := 0.5`). The threshold value (0.5 cm/s) was kept as recommended. This analysis is now historical context — the failure modes described below are no longer possible.
+
 ## Synthesis
 
 **The threshold was scaled correctly in absolute terms but is 10x more aggressive relative to gameplay.**
@@ -84,9 +86,9 @@ The old system "accidentally" satisfied both jobs because the tight threshold (0
 
 ### Action Items
 
-1. **Add consecutive-frame counter to `_check_simulation_complete`.** 10-15 frames at 60fps (0.17-0.25s). This is the primary fix. The threshold value itself is fine for imperceptibility.
-2. **Decide whether to also add a minimum simulation time.** A floor of 0.5-1.0 seconds before any stop-checking prevents the zero-power exploit AND gives collisions time to fully resolve. Addresses two bugs at once.
-3. **Audit the old threshold's effective value.** The commit message says "scaled for cm/s" but the board-relative threshold changed 10x. If the original 0.005 was deliberately tuned (not just a round number), consider whether 0.05 cm/s would be more faithful to the original intent.
+1. ~~**Add consecutive-frame counter to `_check_simulation_complete`.**~~ ✅ Done — `STOP_CONFIRM_FRAMES := 12` (commit `8a0e133`).
+2. ~~**Decide whether to also add a minimum simulation time.**~~ ✅ Done — `MIN_SIMULATION_TIME := 0.5` (commit `8a0e133`). Addresses both false-positive stop detection and zero-power exploit.
+3. **Audit the old threshold's effective value.** The commit message says "scaled for cm/s" but the board-relative threshold changed 10x. Lower priority now that the frame counter compensates.
 
 ### Coverage Gaps
 

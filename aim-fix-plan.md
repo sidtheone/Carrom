@@ -7,13 +7,13 @@ The current aim system maps horizontal mouse movement to an angle, with P2 direc
 
 ## Files to Modify
 
-### `game_manager.gd`
+### `autoload/game_manager.gd`
 - Replace `aim_angle: float` with `aim_direction: Vector3 = Vector3(0, 0, -1)`
 - Replace `set_aim_angle(angle_deg)` with `set_aim_direction(dir: Vector3)` — stores the normalized XZ direction
 - `_shoot_striker()`: use `aim_direction` directly instead of computing from angle. **Remove the P2 direction flip entirely.**
 - Remove `MAX_AIM_ANGLE` constant (no longer needed — raycast naturally limits to forward hemisphere)
 
-### `striker.gd` — Major rewrite of aim/visual sections
+### `scenes/game/striker.gd` — Major rewrite of aim/visual sections
 - **Aim input** (`_handle_aim`):
   - Get camera via `get_viewport().get_camera_3d()`
   - `camera.project_ray_origin(mouse_pos)` + `camera.project_ray_normal(mouse_pos)`
@@ -36,7 +36,7 @@ The current aim system maps horizontal mouse movement to an angle, with P2 direc
 
 - **Remove**: `_create_aim_indicator`, `_update_aim_visual`, all `flip` logic
 
-### `hud.gd`
+### `scenes/ui/hud.gd`
 - Update AIM state text from "Aim (move mouse, click)" to "Aim (point & click)"
 
 ## Key Benefit

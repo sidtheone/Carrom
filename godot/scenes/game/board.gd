@@ -297,7 +297,7 @@ func _spawn_striker() -> void:
 	striker.position = Vector3(0, MEN_HEIGHT * 0.5, 29.0)
 	striker.freeze = true
 
-	var striker_script: Resource = load("res://scripts/striker.gd")
+	var striker_script: Resource = load("res://scenes/game/striker.gd")
 	if striker_script:
 		striker.set_script(striker_script)
 
