@@ -158,7 +158,7 @@ godot.exe --path godot/
 | 3.1 | Placement | Move mouse left/right | Striker slides along bottom baseline |
 | 3.2 | Placement clamp | Move mouse to edges | Striker stops at placement zone boundaries |
 | 3.3 | Confirm placement | Left click | State changes to "Aim", camera angle shifts |
-| 3.4 | Aim control | Move mouse left/right | Aim indicator (red cone) rotates |
+| 3.4 | Aim control | Move mouse left/right | Dotted aim line follows mouse direction |
 | 3.5 | Aim direction P1 | Aim and fire | Striker moves toward board center (-Z direction) |
 | 3.6 | Confirm aim | Left click | State changes to "Power", power bar appears |
 
@@ -298,8 +298,8 @@ godot.exe --path godot/
 
 ### striker.gd
 - Handles mouse input per game state
-- Creates aim indicator cone (red, transparent)
-- Maps mouse X to world position (placement) or angle (aiming)
+- Raycast point-to-aim system with dotted line indicator and collision preview spheres
+- Maps mouse X to world position (placement) or aim direction (aiming)
 
 ### camera_controller.gd
 - 4 camera presets per player (8 total)
@@ -345,15 +345,16 @@ godot.exe --path godot/
 | Parameter | Value | Notes |
 |-----------|-------|-------|
 | Gravity | 0.0 | Flat board, no vertical force |
-| Linear damp (default) | 2.0 | Pieces override to 3.0 |
-| Angular damp (default) | 5.0 | Pieces override to 8.0 |
-| Piece mass | 12.0 kg | Standard carrommen |
-| Striker mass | 18.0 kg | Heavier than pieces |
-| Piece bounce | 0.5 | PhysicsMaterial |
-| Piece friction | 0.4 | PhysicsMaterial |
-| Wall bounce | 0.6 | Bouncier than pieces |
-| Wall friction | 0.3 | Smoother than pieces |
-| Stop threshold | 0.005 m/s | Below this = piece "stopped" |
+| Scale | 1 unit = 1 cm | Board is 74x74 cm |
+| Linear damp | 0.5 | Gentle surface friction (powdered board) |
+| Angular damp | 2.0 | Moderate spin resistance |
+| Piece mass | 5.0 g | ~5g carrom piece |
+| Striker mass | 15.0 g | ~15g (3:1 ratio) |
+| Piece bounce | 0.8 | Hard plastic, elastic collisions |
+| Piece friction | 0.05 | Powdered board, near-frictionless |
+| Wall bounce | 0.7 | Rubber cushion on wood frame |
+| Wall friction | 0.1 | Smooth lacquered wood |
+| Stop threshold | 0.5 cm/s | Below this = piece "stopped" |
 | Max power | 5.0 | Impulse multiplied by 2.0 |
 
 ### Physics Layers
@@ -455,11 +456,11 @@ Board.piece.body_entered  ──► Board._on_piece_collision ──► AudioMan
          │
         +Z (Player 2 shoots toward here)
 
-  Y = up (vertical, pieces at Y ≈ 0.02)
+  Y = up (vertical, pieces at Y ≈ 0.2)
 ```
 
-- Board: 7.4 x 7.4 units on XZ plane
-- Player 1 baseline: Z = -2.9
-- Player 2 baseline: Z = +2.9
-- Pockets: 4 corners at (+-3.3, 0, +-3.3)
-- Scale factor: 0.01 (original cm → Godot meters)
+- Scale: 1 unit = 1 cm (no scale factor)
+- Board: 74 x 74 cm on XZ plane
+- Player 1 baseline: Z = +29 cm
+- Player 2 baseline: Z = -29 cm
+- Pockets: 4 corners at (+-33, 0, +-33)

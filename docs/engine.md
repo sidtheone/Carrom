@@ -1,9 +1,11 @@
 # Engine Trace: Striker Release → Collisions → Simulation Stop
 
+> Godot 4.6 — GDScript physics engine architecture
+
 Complete trace of the game engine from the moment the player releases the
 mouse button to fire, through physics simulation and collisions, to the
 simulation stop and turn resolution. Every function call, signal emission,
-and side effect is documented with file:line references matching the current code.
+and side effect is documented with file references matching the current code.
 
 ---
 
